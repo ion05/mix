@@ -16,7 +16,7 @@ struct MixApp: App {
                 }
         } label: {
             Image(systemName: store.snapshot.systemMuted ? "speaker.slash" : "speaker.wave.2")
-                .font(.system(size: 16, weight: .medium))
+                .font(MixType.menuBarExtra)
                 .frame(width: 22, height: 22)
         }
         .menuBarExtraStyle(.window)

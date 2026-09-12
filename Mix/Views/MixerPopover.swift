@@ -1,11 +1,85 @@
 import AppKit
 import SwiftUI
 
+// MARK: - Design tokens
+
+/// The only type scale in Mix. DESIGN.md fixes it at 11 / 13 / 15, so every
+/// size in the app comes from here and no view declares its own.
+enum MixType {
+    /// System output device name. DESIGN.md display/hero, 15/590.
+    static let hero = Font.system(size: 15, weight: .semibold)
+    /// App names and the input device name. DESIGN.md body, 13/510.
+    static let body = Font.system(size: 13, weight: .medium)
+    /// Destinations, the error line, the empty state, the Mix footer.
+    /// DESIGN.md UI label, 11/510.
+    static let label = Font.system(size: 11, weight: .medium)
+
+    /// Icons sit on the same 11 / 13 / 15 scale as the text beside them.
+    static let heroGlyph = Font.system(size: 15, weight: .medium)
+    static let glyph = Font.system(size: 13, weight: .medium)
+    static let smallGlyph = Font.system(size: 11, weight: .medium)
+
+    /// Disclosure chevrons carry the row's weight one scale step below its text,
+    /// so a 13 or 15 point row gets an 11 point chevron and an 11 point pill gets
+    /// a 9. Two sizes, one rule, rather than the four the popover used to have.
+    static let chevron = Font.system(size: 11, weight: .semibold)
+    static let chevronSmall = Font.system(size: 9, weight: .semibold)
+
+    /// The menu bar extra. Off the 11 / 13 / 15 scale on purpose: DESIGN.md
+    /// specifies a 16 point icon in a 22 point extra.
+    static let menuBarExtra = Font.system(size: 16, weight: .medium)
+}
+
+/// Every gap in the popover. DESIGN.md sets an 8 point base at compact density,
+/// so these are the only spacing values and nothing writes a loose number.
+enum MixSpace {
+    /// DESIGN.md popover inset.
+    static let popover: CGFloat = 10
+    /// DESIGN.md row inset.
+    static let row: CGFloat = 8
+    /// DESIGN.md section gap.
+    static let section: CGFloat = 8
+    /// Half step, for the gap between a row and its own volume bar.
+    static let tight: CGFloat = 4
+    /// Glyph tile to the text beside it.
+    static let gutter: CGFloat = 10
+}
+
+/// Fixed sizes the layout derives from, kept here so the volume bar indent and
+/// the tile widths can never drift apart.
+enum MixMetrics {
+    static let popoverWidth: CGFloat = 320
+    /// DESIGN.md radius scale: popover 20, row 12, glyph 8, app icon 7.
+    static let popoverRadius: CGFloat = 20
+    static let glyphRadius: CGFloat = 8
+    static let appIconRadius: CGFloat = 7
+    static let heroTile: CGFloat = 34
+    static let appIcon: CGFloat = 28
+    static let inputGlyph: CGFloat = 20
+    static let heroSlider: CGFloat = 26
+    static let rowSlider: CGFloat = 14
+    static let inputSlider: CGFloat = 80
+    /// The destination pill never takes more than this, so a long device name
+    /// can never squeeze the app name it sits beside down to nothing.
+    static let destinationMaxWidth: CGFloat = 140
+    /// Volume bars start under the app name, not under its icon.
+    static var nameIndent: CGFloat { appIcon + MixSpace.gutter }
+}
+
+enum MixPalette {
+    static let fallback = Color(red: 1, green: 159 / 255, blue: 10 / 255)
+    static let connected = Color(red: 52 / 255, green: 199 / 255, blue: 89 / 255)
+    static let danger = Color(red: 1, green: 59 / 255, blue: 48 / 255)
+    static let info = Color(red: 100 / 255, green: 210 / 255, blue: 1)
+}
+
+// MARK: - Popover
+
 /// Direction B, "Weight Ladder". System controls and per-app controls are told
 /// apart by scale and type weight alone, with no cards, boxes, or borders.
-/// The output hero is the biggest, heaviest thing in the popover; the input line
-/// sits directly beneath it as part of the same block; one hairline separates
-/// both from a deliberately lighter app list.
+/// The output hero is the heaviest thing in the popover; the input line sits
+/// directly beneath it as part of the same block; one hairline separates both
+/// from a deliberately lighter app list.
 struct MixerPopover: View {
     @EnvironmentObject private var store: MixerStore
 
@@ -33,7 +107,7 @@ struct MixerPopover: View {
             // everything below it is an app.
             Divider()
                 .opacity(0.35)
-                .padding(.vertical, 12)
+                .padding(.vertical, MixSpace.section)
 
             if snapshot.apps.isEmpty {
                 EmptyAppsRow()
@@ -46,10 +120,10 @@ struct MixerPopover: View {
 
             FooterBar()
         }
-        .padding(10)
-        .frame(width: 320)
+        .padding(MixSpace.popover)
+        .frame(width: MixMetrics.popoverWidth)
         .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: MixMetrics.popoverRadius, style: .continuous))
         .tint(Color(nsColor: .controlAccentColor))
     }
 
@@ -60,8 +134,8 @@ struct MixerPopover: View {
 
 // MARK: - System
 
-/// The hero. Largest glyph, largest name, tallest slider in the popover, because
-/// this is the control reached for most often.
+/// The hero. Largest tile, heaviest name, tallest slider in the popover,
+/// because this is the control reached for most often.
 struct SystemOutputHero: View {
     var device: DeviceInfo
     var volume: Float
@@ -72,49 +146,45 @@ struct SystemOutputHero: View {
     var onMute: (Bool) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: MixSpace.tight) {
             Menu {
                 DestinationList(devices: devices) { uid in
                     if let uid { onSelect(uid) }
                 }
             } label: {
-                HStack(spacing: 10) {
+                HStack(spacing: MixSpace.gutter) {
                     Image(systemName: "speaker.wave.2")
-                        .font(.system(size: 15, weight: .medium))
-                        .frame(width: 34, height: 34)
-                        .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-                    Text(device.name)
-                        .font(.system(size: 17, weight: .semibold))
-                        .tracking(-0.3)
-                        .lineLimit(1)
-                    Spacer(minLength: 6)
+                        .font(MixType.heroGlyph)
+                        .frame(width: MixMetrics.heroTile, height: MixMetrics.heroTile)
+                        .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: MixMetrics.glyphRadius, style: .continuous))
+                    DeviceName(device.name, font: MixType.hero)
+                    Spacer(minLength: MixSpace.tight)
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(MixType.chevron)
                         .foregroundStyle(.tertiary)
                 }
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
 
-            HStack(spacing: 8) {
+            HStack(spacing: MixSpace.row) {
                 Slider(value: Binding(
                     get: { Double(volume) },
                     set: { onVolume(Float($0)) }
                 ), in: 0...1)
                 .controlSize(.large)
-                .frame(height: 26)
+                .frame(height: MixMetrics.heroSlider)
                 .animation(.easeOut(duration: 0.1), value: volume)
                 MuteButton(muted: muted) { onMute(!muted) }
             }
         }
-        .padding(.horizontal, 8)
-        .padding(.top, 2)
+        .padding(.horizontal, MixSpace.row)
     }
 }
 
-/// Subordinate by design: smaller glyph, lighter name, and an inline slider that
-/// takes only the right third of the width. No divider above it, so it reads as
-/// part of the same system block as the hero.
+/// Subordinate by design: smaller glyph, secondary colour, and an inline slider
+/// that takes only the right quarter of the width. No divider above it, so it
+/// reads as part of the same system block as the hero.
 struct SystemInputLine: View {
     var device: DeviceInfo
     var volume: Float?
@@ -123,30 +193,30 @@ struct SystemInputLine: View {
     var onVolume: (Float) -> Void
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: MixSpace.row) {
             Menu {
                 DestinationList(devices: devices) { uid in
                     if let uid { onSelect(uid) }
                 }
             } label: {
-                HStack(spacing: 8) {
+                HStack(spacing: MixSpace.row) {
                     Image(systemName: "mic")
-                        .font(.system(size: 12, weight: .medium))
-                        .frame(width: 20)
-                    Text(device.name)
-                        .font(.system(size: 12))
-                        .lineLimit(1)
+                        .font(MixType.smallGlyph)
+                        .frame(width: MixMetrics.inputGlyph)
+                    DeviceName(device.name, font: MixType.body)
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 9, weight: .semibold))
+                        .font(MixType.chevronSmall)
                         .foregroundStyle(.tertiary)
                 }
                 .foregroundStyle(.secondary)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .fixedSize()
+            // Takes its share of the row before the spacer does, so a long
+            // device name shortens itself instead of shoving the slider away.
+            .layoutPriority(1)
 
-            Spacer(minLength: 8)
+            Spacer(minLength: MixSpace.row)
 
             if let volume {
                 Slider(value: Binding(
@@ -154,70 +224,74 @@ struct SystemInputLine: View {
                     set: { onVolume(Float($0)) }
                 ), in: 0...1)
                 .controlSize(.mini)
-                .frame(width: 92, height: 14)
+                .frame(width: MixMetrics.inputSlider, height: MixMetrics.rowSlider)
                 .animation(.easeOut(duration: 0.1), value: volume)
             }
         }
-        .padding(.horizontal, 8)
-        .padding(.top, 6)
+        .padding(.horizontal, MixSpace.row)
+        .padding(.top, MixSpace.tight)
     }
 }
 
 // MARK: - Apps
 
-/// Lighter than the system block on purpose: regular weight name, thin slider.
-/// Two lines, exactly as approved. Name and destination on top, volume beneath.
+/// Lighter than the system block on purpose: secondary weight against the
+/// hero's semibold, a thin slider, and an indent. Two lines, as approved.
+/// Name and destination on top, volume beneath.
 struct AppRouteRow: View {
     @EnvironmentObject private var store: MixerStore
     var app: AppRow
     var outputs: [DeviceInfo]
 
-    /// Icon width plus its trailing gap, so the volume bar starts under the name.
-    private let nameIndent: CGFloat = 38
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 10) {
+        VStack(alignment: .leading, spacing: MixSpace.tight) {
+            HStack(spacing: MixSpace.gutter) {
                 Image(nsImage: store.icon(for: app.bundleID))
                     .resizable()
-                    .frame(width: 28, height: 28)
-                    .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                    .frame(width: MixMetrics.appIcon, height: MixMetrics.appIcon)
+                    .clipShape(RoundedRectangle(cornerRadius: MixMetrics.appIconRadius, style: .continuous))
                 Text(app.name)
-                    .font(.system(size: 13))
+                    .font(MixType.body)
                     .lineLimit(1)
-                Spacer(minLength: 8)
+                    // The app name keeps its share of the row before the
+                    // destination pill gets to grow.
+                    .layoutPriority(1)
+                Spacer(minLength: MixSpace.row)
                 destinationMenu
             }
 
-            HStack(spacing: 8) {
+            HStack(spacing: MixSpace.row) {
                 Slider(value: Binding(
                     get: { Double(app.volume) },
                     set: { store.apply(.setAppVolume(bundleID: app.bundleID, volume: Float($0))) }
                 ), in: 0...1)
                 .controlSize(.mini)
-                .frame(height: 14)
+                .frame(height: MixMetrics.rowSlider)
                 .animation(.easeOut(duration: 0.1), value: app.volume)
                 MuteButton(muted: app.muted) {
                     store.apply(.setAppMuted(bundleID: app.bundleID, muted: !app.muted))
                 }
             }
-            .padding(.leading, nameIndent)
+            .padding(.leading, MixMetrics.nameIndent)
 
             if let error = app.error {
                 Text(error)
-                    .font(.system(size: 11, weight: .medium))
+                    .font(MixType.label)
                     .foregroundStyle(MixPalette.info)
-                    .padding(.leading, nameIndent)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.leading, MixMetrics.nameIndent)
             }
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 5)
+        .padding(.horizontal, MixSpace.row)
+        .padding(.vertical, MixSpace.tight)
         .contentShape(Rectangle())
     }
 
     /// The destination is a pill with its own visible chevron. The stock menu
     /// indicator is hidden only so this one can replace it, never to leave the
-    /// control looking like plain text.
+    /// control looking like plain text. Width is capped so a long device name
+    /// truncates inside the pill instead of crowding out the app name.
     private var destinationMenu: some View {
         Menu {
             Button("System") {
@@ -228,30 +302,29 @@ struct AppRouteRow: View {
                 store.apply(.setAppOutput(bundleID: app.bundleID, uid: uid))
             }
         } label: {
-            HStack(spacing: 5) {
+            HStack(spacing: MixSpace.tight) {
                 if app.destinationIsBluetooth && !app.destinationIsFallback {
                     Circle()
                         .fill(MixPalette.connected)
                         .frame(width: 6, height: 6)
                 }
                 Text(app.destinationName)
-                    .font(.system(size: 11, weight: .medium))
+                    .font(MixType.label)
                     .lineLimit(1)
                 Image(systemName: "chevron.down")
-                    .font(.system(size: 8, weight: .bold))
+                    .font(MixType.chevronSmall)
                     .opacity(0.55)
             }
             .foregroundStyle(app.destinationIsFallback ? MixPalette.fallback : Color.primary)
-            .padding(.leading, 8)
-            .padding(.trailing, 7)
-            .padding(.vertical, 3)
+            .padding(.horizontal, MixSpace.row)
+            .padding(.vertical, MixSpace.tight)
             .background(.quaternary.opacity(0.5), in: Capsule())
             .contentShape(Capsule())
             .transaction { $0.animation = nil }
         }
         .buttonStyle(.plain)
         .menuIndicator(.hidden)
-        .fixedSize()
+        .frame(maxWidth: MixMetrics.destinationMaxWidth, alignment: .trailing)
         .transaction { $0.animation = nil }
     }
 }
@@ -261,17 +334,38 @@ struct AppRouteRow: View {
 struct EmptyAppsRow: View {
     var body: some View {
         Text("No apps playing audio")
-            .font(.system(size: 11, weight: .medium))
+            .font(MixType.label)
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
+            .padding(.horizontal, MixSpace.row)
+            .padding(.vertical, MixSpace.section)
     }
 }
 
 // MARK: - Shared controls
 
-/// Same glyph, same position, right end of every volume bar.
+/// Device names are the only unbounded text in the popover. They tighten, then
+/// shrink a little, then truncate, so an AirPods Pro Max with a long owner name
+/// degrades gracefully instead of clipping at full size.
+struct DeviceName: View {
+    private let name: String
+    private let font: Font
+
+    init(_ name: String, font: Font) {
+        self.name = name
+        self.font = font
+    }
+
+    var body: some View {
+        Text(name)
+            .font(font)
+            .lineLimit(1)
+            .allowsTightening(true)
+            .minimumScaleFactor(0.85)
+    }
+}
+
+/// Same glyph, same size, same position: the right end of every volume bar.
 struct MuteButton: View {
     var muted: Bool
     var action: () -> Void
@@ -279,9 +373,9 @@ struct MuteButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: muted ? "speaker.slash.fill" : "speaker.wave.2.fill")
-                .font(.system(size: 11))
+                .font(MixType.smallGlyph)
                 .foregroundStyle(muted ? MixPalette.danger : .secondary)
-                .frame(width: 20, height: 20)
+                .frame(width: MixMetrics.inputGlyph, height: MixMetrics.inputGlyph)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -357,18 +451,20 @@ struct FooterBar: View {
                 }
             } label: {
                 Image(systemName: "gearshape")
+                    .font(MixType.glyph)
                     .foregroundStyle(.secondary)
-                    .frame(width: 20, height: 20)
+                    .frame(width: MixMetrics.inputGlyph, height: MixMetrics.inputGlyph)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .menuIndicator(.hidden)
             Spacer()
             Text("Mix")
-                .font(.system(size: 11, weight: .medium))
+                .font(MixType.label)
                 .foregroundStyle(.secondary)
         }
-        .padding(.horizontal, 8)
-        .padding(.top, 10)
+        .padding(.horizontal, MixSpace.row)
+        .padding(.top, MixSpace.section)
         .overlay(alignment: .top) {
             Divider().opacity(0.35)
         }

@@ -147,10 +147,3 @@ final class MixerStore: ObservableObject {
         return NSImage(systemSymbolName: "app", accessibilityDescription: nil) ?? NSImage()
     }
 }
-
-enum MixPalette {
-    static let fallback = Color(red: 1, green: 159 / 255, blue: 10 / 255)
-    static let connected = Color(red: 52 / 255, green: 199 / 255, blue: 89 / 255)
-    static let danger = Color(red: 1, green: 59 / 255, blue: 48 / 255)
-    static let info = Color(red: 100 / 255, green: 210 / 255, blue: 1)
-}
