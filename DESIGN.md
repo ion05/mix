@@ -12,7 +12,7 @@
 - **Direction:** Native Tahoe Control Center module
 - **Decoration level:** minimal (specular glass only)
 - **Mood:** It was always part of macOS. The only Mix identity on screen is the 11pt footer word.
-- **Reference:** Control Center Sound; approved HTML stand-in at `~/.gstack/projects/mix/designs/design-system-20260908/preview.html`
+- **Reference:** macOS Control Center Sound module
 
 ## Typography
 

@@ -1,8 +1,19 @@
+# macOS
 .DS_Store
+
+# Xcode
 build/
 DerivedData/
 xcuserdata/
 *.xcuserstate
+*.xcscmblueprint
 *.moved-aside
 .swiftpm/
+
+# Editors and agent tooling
 .vscode/
+.idea/
+.claude/
+.conductor/
+.gstack/
+CLAUDE.md
