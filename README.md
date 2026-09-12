@@ -8,7 +8,7 @@ macOS lets you pick one output device for the entire system. Mix gives you one
 per app, from a Control Center style panel in the menu bar.
 
 <p align="center">
-  <img src="docs/popover.png" width="320"
+  <img src="docs/popover.png" width="366"
        alt="The Mix panel. MacBook Pro Speakers is the system output with a full-width volume slider, the MacBook Pro Microphone sits beneath it with its own smaller slider, and below a divider, Dia plays through System while Spotify plays through a XECH Ellipse, each with its own volume slider and mute button.">
 </p>
 
