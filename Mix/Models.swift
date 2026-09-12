@@ -48,7 +48,6 @@ struct AppRow: Codable, Equatable, Identifiable {
     var outputUID: String?
     var destinationName: String
     var destinationIsFallback: Bool
-    var destinationIsBluetooth: Bool
     var error: String?
 
     var id: String { bundleID }

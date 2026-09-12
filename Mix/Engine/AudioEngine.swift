@@ -257,7 +257,6 @@ final class AudioEngine: @unchecked Sendable {
                 outputUID: outputUID,
                 destinationName: dest.name,
                 destinationIsFallback: fallback,
-                destinationIsBluetooth: dest.isBluetooth && !fallback,
                 error: route?.error
             )
         }

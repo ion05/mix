@@ -68,7 +68,6 @@ enum MixMetrics {
 
 enum MixPalette {
     static let fallback = Color(red: 1, green: 159 / 255, blue: 10 / 255)
-    static let connected = Color(red: 52 / 255, green: 199 / 255, blue: 89 / 255)
     static let danger = Color(red: 1, green: 59 / 255, blue: 48 / 255)
     static let info = Color(red: 100 / 255, green: 210 / 255, blue: 1)
 }
@@ -288,6 +287,13 @@ struct AppRouteRow: View {
         .contentShape(Rectangle())
     }
 
+    /// An app following the system output says so. Naming the resolved device
+    /// there read as if that device had been pinned deliberately, which is a
+    /// different thing: a pinned app stays put when the system output changes.
+    private var destinationLabel: String {
+        app.outputUID == nil ? "System" : app.destinationName
+    }
+
     /// The destination is a pill with its own visible chevron. The stock menu
     /// indicator is hidden only so this one can replace it, never to leave the
     /// control looking like plain text. Width is capped so a long device name
@@ -303,12 +309,7 @@ struct AppRouteRow: View {
             }
         } label: {
             HStack(spacing: MixSpace.tight) {
-                if app.destinationIsBluetooth && !app.destinationIsFallback {
-                    Circle()
-                        .fill(MixPalette.connected)
-                        .frame(width: 6, height: 6)
-                }
-                Text(app.destinationName)
+                Text(destinationLabel)
                     .font(MixType.label)
                     .lineLimit(1)
                 Image(systemName: "chevron.down")
