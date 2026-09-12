@@ -9,90 +9,36 @@
 /* Begin PBXBuildFile section */
 		B00100000000000000000001 /* MixApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000001 /* MixApp.swift */; };
 		B00100000000000000000002 /* MixerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000002 /* MixerStore.swift */; };
-		B00100000000000000000003 /* AudioClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000003 /* AudioClient.swift */; };
 		B00100000000000000000004 /* MixerPopover.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000004 /* MixerPopover.swift */; };
 		B00100000000000000000005 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000005 /* Models.swift */; };
-				B00100000000000000000006 /* XPCProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000006 /* XPCProtocol.swift */; };
-				B00100000000000000000010 /* AudioEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00200000000000000000003 /* AudioEngine.swift */; };
-				B00100000000000000000011 /* TapRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00200000000000000000004 /* TapRoute.swift */; };
-				B00100000000000000000012 /* HAL.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00200000000000000000005 /* HAL.swift */; };
-				B00100000000000000000013 /* Devices.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00200000000000000000006 /* Devices.swift */; };
-				B00100000000000000000014 /* Processes.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00200000000000000000007 /* Processes.swift */; };
-				B00100000000000000000015 /* Persistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00200000000000000000008 /* Persistence.swift */; };
-				B00100000000000000000007 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000007 /* Assets.xcassets */; };
-		B00100000000000000000008 /* com.aayanagarwal.mix.audio.plist in Copy LaunchAgents */ = {isa = PBXBuildFile; fileRef = F00100000000000000000008 /* com.aayanagarwal.mix.audio.plist */; };
-		B00100000000000000000009 /* MixAudio in Copy MixAudio */ = {isa = PBXBuildFile; fileRef = F00100000000000000000020 /* MixAudio */; };
-		B00200000000000000000001 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00200000000000000000001 /* main.swift */; };
-		B00200000000000000000002 /* Listener.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00200000000000000000002 /* Listener.swift */; };
-		B00200000000000000000003 /* AudioEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00200000000000000000003 /* AudioEngine.swift */; };
-		B00200000000000000000004 /* TapRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00200000000000000000004 /* TapRoute.swift */; };
-		B00200000000000000000005 /* HAL.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00200000000000000000005 /* HAL.swift */; };
-		B00200000000000000000006 /* Devices.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00200000000000000000006 /* Devices.swift */; };
-		B00200000000000000000007 /* Processes.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00200000000000000000007 /* Processes.swift */; };
-		B00200000000000000000008 /* Persistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00200000000000000000008 /* Persistence.swift */; };
-		B00200000000000000000009 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000005 /* Models.swift */; };
-		B00200000000000000000010 /* XPCProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000006 /* XPCProtocol.swift */; };
+		B00100000000000000000007 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000007 /* Assets.xcassets */; };
+		B00100000000000000000010 /* AudioEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00200000000000000000003 /* AudioEngine.swift */; };
+		B00100000000000000000011 /* TapRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00200000000000000000004 /* TapRoute.swift */; };
+		B00100000000000000000012 /* HAL.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00200000000000000000005 /* HAL.swift */; };
+		B00100000000000000000013 /* Devices.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00200000000000000000006 /* Devices.swift */; };
+		B00100000000000000000014 /* Processes.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00200000000000000000007 /* Processes.swift */; };
+		B00100000000000000000015 /* Persistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00200000000000000000008 /* Persistence.swift */; };
 /* End PBXBuildFile section */
-
-/* Begin PBXCopyFilesBuildPhase section */
-		C00100000000000000000001 /* Copy MixAudio */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 6;
-			files = (
-				B00100000000000000000009 /* MixAudio in Copy MixAudio */,
-			);
-			name = "Copy MixAudio";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		C00100000000000000000002 /* Copy LaunchAgents */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = Contents/Library/LaunchAgents;
-			dstSubfolderSpec = 1;
-			files = (
-				B00100000000000000000008 /* com.aayanagarwal.mix.audio.plist in Copy LaunchAgents */,
-			);
-			name = "Copy LaunchAgents";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		F00100000000000000000001 /* MixApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MixApp.swift; sourceTree = "<group>"; };
 		F00100000000000000000002 /* MixerStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MixerStore.swift; sourceTree = "<group>"; };
-		F00100000000000000000003 /* AudioClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioClient.swift; sourceTree = "<group>"; };
 		F00100000000000000000004 /* MixerPopover.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MixerPopover.swift; sourceTree = "<group>"; };
 		F00100000000000000000005 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
-		F00100000000000000000006 /* XPCProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XPCProtocol.swift; sourceTree = "<group>"; };
 		F00100000000000000000007 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		F00100000000000000000008 /* com.aayanagarwal.mix.audio.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = com.aayanagarwal.mix.audio.plist; sourceTree = "<group>"; };
 		F00100000000000000000009 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		F00100000000000000000010 /* Mix.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Mix.entitlements; sourceTree = "<group>"; };
 		F00100000000000000000011 /* Mix.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Mix.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		F00100000000000000000020 /* MixAudio */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = MixAudio; sourceTree = BUILT_PRODUCTS_DIR; };
-		F00200000000000000000001 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
-		F00200000000000000000002 /* Listener.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Listener.swift; sourceTree = "<group>"; };
 		F00200000000000000000003 /* AudioEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioEngine.swift; sourceTree = "<group>"; };
 		F00200000000000000000004 /* TapRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TapRoute.swift; sourceTree = "<group>"; };
 		F00200000000000000000005 /* HAL.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HAL.swift; sourceTree = "<group>"; };
 		F00200000000000000000006 /* Devices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Devices.swift; sourceTree = "<group>"; };
 		F00200000000000000000007 /* Processes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Processes.swift; sourceTree = "<group>"; };
 		F00200000000000000000008 /* Persistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Persistence.swift; sourceTree = "<group>"; };
-		F00200000000000000000009 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		F00200000000000000000010 /* MixAudio.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MixAudio.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		FW0100000000000000000001 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		FW0200000000000000000001 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -106,8 +52,6 @@
 			isa = PBXGroup;
 			children = (
 				G00000000000000000000002 /* Mix */,
-				G00000000000000000000003 /* MixAudio */,
-				G00000000000000000000004 /* MixShared */,
 				G00000000000000000000005 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -117,9 +61,9 @@
 			children = (
 				F00100000000000000000001 /* MixApp.swift */,
 				F00100000000000000000002 /* MixerStore.swift */,
-				F00100000000000000000003 /* AudioClient.swift */,
+				F00100000000000000000005 /* Models.swift */,
 				G00000000000000000000006 /* Views */,
-				G00000000000000000000007 /* LaunchAgents */,
+				G00000000000000000000003 /* Engine */,
 				F00100000000000000000007 /* Assets.xcassets */,
 				F00100000000000000000009 /* Info.plist */,
 				F00100000000000000000010 /* Mix.entitlements */,
@@ -127,37 +71,23 @@
 			path = Mix;
 			sourceTree = "<group>";
 		};
-		G00000000000000000000003 /* MixAudio */ = {
+		G00000000000000000000003 /* Engine */ = {
 			isa = PBXGroup;
 			children = (
-				F00200000000000000000001 /* main.swift */,
-				F00200000000000000000002 /* Listener.swift */,
 				F00200000000000000000003 /* AudioEngine.swift */,
 				F00200000000000000000004 /* TapRoute.swift */,
 				F00200000000000000000005 /* HAL.swift */,
 				F00200000000000000000006 /* Devices.swift */,
 				F00200000000000000000007 /* Processes.swift */,
 				F00200000000000000000008 /* Persistence.swift */,
-				F00200000000000000000009 /* Info.plist */,
-				F00200000000000000000010 /* MixAudio.entitlements */,
 			);
-			path = MixAudio;
-			sourceTree = "<group>";
-		};
-		G00000000000000000000004 /* MixShared */ = {
-			isa = PBXGroup;
-			children = (
-				F00100000000000000000005 /* Models.swift */,
-				F00100000000000000000006 /* XPCProtocol.swift */,
-			);
-			path = MixShared;
+			path = Engine;
 			sourceTree = "<group>";
 		};
 		G00000000000000000000005 /* Products */ = {
 			isa = PBXGroup;
 			children = (
 				F00100000000000000000011 /* Mix.app */,
-				F00100000000000000000020 /* MixAudio */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -170,14 +100,6 @@
 			path = Views;
 			sourceTree = "<group>";
 		};
-		G00000000000000000000007 /* LaunchAgents */ = {
-			isa = PBXGroup;
-			children = (
-				F00100000000000000000008 /* com.aayanagarwal.mix.audio.plist */,
-			);
-			path = LaunchAgents;
-			sourceTree = "<group>";
-		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -188,34 +110,15 @@
 				S00100000000000000000001 /* Sources */,
 				FW0100000000000000000001 /* Frameworks */,
 				R00100000000000000000001 /* Resources */,
-				C00100000000000000000001 /* Copy MixAudio */,
-				C00100000000000000000002 /* Copy LaunchAgents */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				D00100000000000000000001 /* PBXTargetDependency */,
 			);
 			name = Mix;
 			productName = Mix;
 			productReference = F00100000000000000000011 /* Mix.app */;
 			productType = "com.apple.product-type.application";
-		};
-		T00200000000000000000001 /* MixAudio */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = CL0200000000000000000001 /* Build configuration list for PBXNativeTarget "MixAudio" */;
-			buildPhases = (
-				S00200000000000000000001 /* Sources */,
-				FW0200000000000000000001 /* Frameworks */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			name = MixAudio;
-			productName = MixAudio;
-			productReference = F00100000000000000000020 /* MixAudio */;
-			productType = "com.apple.product-type.tool";
 		};
 /* End PBXNativeTarget section */
 
@@ -241,7 +144,6 @@
 			projectRoot = "";
 			targets = (
 				T00100000000000000000001 /* Mix */,
-				T00200000000000000000001 /* MixAudio */,
 			);
 		};
 /* End PBXProject section */
@@ -264,10 +166,8 @@
 			files = (
 				B00100000000000000000001 /* MixApp.swift in Sources */,
 				B00100000000000000000002 /* MixerStore.swift in Sources */,
-				B00100000000000000000003 /* AudioClient.swift in Sources */,
 				B00100000000000000000004 /* MixerPopover.swift in Sources */,
 				B00100000000000000000005 /* Models.swift in Sources */,
-				B00100000000000000000006 /* XPCProtocol.swift in Sources */,
 				B00100000000000000000010 /* AudioEngine.swift in Sources */,
 				B00100000000000000000011 /* TapRoute.swift in Sources */,
 				B00100000000000000000012 /* HAL.swift in Sources */,
@@ -277,42 +177,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		S00200000000000000000001 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				B00200000000000000000001 /* main.swift in Sources */,
-				B00200000000000000000002 /* Listener.swift in Sources */,
-				B00200000000000000000003 /* AudioEngine.swift in Sources */,
-				B00200000000000000000004 /* TapRoute.swift in Sources */,
-				B00200000000000000000005 /* HAL.swift in Sources */,
-				B00200000000000000000006 /* Devices.swift in Sources */,
-				B00200000000000000000007 /* Processes.swift in Sources */,
-				B00200000000000000000008 /* Persistence.swift in Sources */,
-				B00200000000000000000009 /* Models.swift in Sources */,
-				B00200000000000000000010 /* XPCProtocol.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXSourcesBuildPhase section */
-
-/* Begin PBXTargetDependency section */
-		D00100000000000000000001 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = T00200000000000000000001 /* MixAudio */;
-			targetProxy = D00100000000000000000002 /* PBXContainerItemProxy */;
-		};
-/* End PBXTargetDependency section */
-
-/* Begin PBXContainerItemProxy section */
-		D00100000000000000000002 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = P00000000000000000000001 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = T00200000000000000000001;
-			remoteInfo = MixAudio;
-		};
-/* End PBXContainerItemProxy section */
 
 /* Begin XCBuildConfiguration section */
 		CFG000000000000000000001 /* Debug */ = {
@@ -390,40 +255,6 @@
 			};
 			name = Release;
 		};
-		CFG200000000000000000001 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = MixAudio/MixAudio.entitlements;
-				CODE_SIGN_IDENTITY = "-";
-				CODE_SIGN_STYLE = Automatic;
-				ENABLE_HARDENED_RUNTIME = NO;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = MixAudio/Info.plist;
-				MACH_O_TYPE = mh_execute;
-				PRODUCT_BUNDLE_IDENTIFIER = com.aayanagarwal.mix.audio;
-				PRODUCT_NAME = MixAudio;
-				SKIP_INSTALL = YES;
-				SWIFT_VERSION = 5.0;
-			};
-			name = Debug;
-		};
-		CFG200000000000000000002 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = MixAudio/MixAudio.entitlements;
-				CODE_SIGN_IDENTITY = "-";
-				CODE_SIGN_STYLE = Automatic;
-				ENABLE_HARDENED_RUNTIME = NO;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = MixAudio/Info.plist;
-				MACH_O_TYPE = mh_execute;
-				PRODUCT_BUNDLE_IDENTIFIER = com.aayanagarwal.mix.audio;
-				PRODUCT_NAME = MixAudio;
-				SKIP_INSTALL = YES;
-				SWIFT_VERSION = 5.0;
-			};
-			name = Release;
-		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -441,15 +272,6 @@
 			buildConfigurations = (
 				CFG100000000000000000001 /* Debug */,
 				CFG100000000000000000002 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		CL0200000000000000000001 /* Build configuration list for PBXNativeTarget "MixAudio" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				CFG200000000000000000001 /* Debug */,
-				CFG200000000000000000002 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

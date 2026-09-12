@@ -3,148 +3,120 @@ import AppKit
 import ServiceManagement
 import SwiftUI
 
+/// Single source of truth for the popover. Mix runs one process, so the engine
+/// is owned here and lives exactly as long as the menu bar item does.
 @MainActor
 final class MixerStore: ObservableObject {
     static let shared = MixerStore()
-    @Published var snapshot: MixerSnapshot? = .shellPreview()
-    @Published var agentReady = false
-    @Published var showPermissionRepair = false
 
-    private let client = AudioClient()
-    private var localEngine: AudioEngine?
+    @Published private(set) var snapshot: MixerSnapshot = .empty
+    @Published private(set) var showPermissionRepair = false
+    @Published private(set) var loginEnabled = SMAppService.mainApp.status == .enabled
+    /// Non-nil when a Launch at Login change failed. Surfaced in the menu so a
+    /// registration failure can never pass silently again.
+    @Published private(set) var loginError: String?
+
+    private let engine = AudioEngine()
     private var timer: Timer?
+    private var isQuitting = false
 
     func start() {
-        ensureServices()
+        engine.start()
         enableLoginOnFirstLaunch()
         Task { await refresh() }
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+        let timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 await self?.refresh()
             }
         }
-        if let timer {
-            RunLoop.main.add(timer, forMode: .common)
-        }
+        RunLoop.main.add(timer, forMode: .common)
+        self.timer = timer
     }
 
-    func ensureServices() {
-        let agent = SMAppService.agent(plistName: MixXPC.agentPlist)
-        if agent.status != .enabled {
-            Task { try? await agent.register() }
-        }
-        client.connect()
-    }
-
-    func refresh() async {
-        if let engine = localEngine {
-            await pullLocal(engine)
-            Task { await self.promoteAgentIfAvailable() }
-            return
-        }
-        if let snapshot = await client.fetchSnapshot() {
-            applySnapshot(snapshot)
-            agentReady = true
-            return
-        }
-        agentReady = false
-        ensureServices()
-        let engine = AudioEngine()
-        engine.start()
-        localEngine = engine
-        await pullLocal(engine)
-    }
-
-    private func pullLocal(_ engine: AudioEngine) async {
-        let snapshot: MixerSnapshot? = await withCheckedContinuation { continuation in
-            engine.fetchSnapshot { data in
-                continuation.resume(returning: try? JSONDecoder().decode(MixerSnapshot.self, from: data))
-            }
-        }
-        if let snapshot {
-            applySnapshot(snapshot)
-        }
-    }
-
-    private func promoteAgentIfAvailable() async {
-        guard let snapshot = await client.fetchSnapshot() else { return }
-        if let localEngine {
-            localEngine.requestQuit {}
-            self.localEngine = nil
-        }
-        applySnapshot(snapshot)
-        agentReady = true
+    private func refresh() async {
+        guard !isQuitting else { return }
+        applySnapshot(await engine.snapshot())
     }
 
     func apply(_ command: MixCommand) {
-        Task {
-            if agentReady, let snapshot = await client.apply(command) {
-                applySnapshot(snapshot)
-                return
-            }
-            guard let engine = localEngine, let data = try? JSONEncoder().encode(command) else { return }
-            let snapshot: MixerSnapshot? = await withCheckedContinuation { continuation in
-                engine.applyCommand(data) { data in
-                    continuation.resume(returning: try? JSONDecoder().decode(MixerSnapshot.self, from: data))
-                }
-            }
-            if let snapshot {
-                applySnapshot(snapshot)
-            }
-        }
+        guard !isQuitting else { return }
+        Task { applySnapshot(await engine.apply(command)) }
+    }
+
+    func setSystemVolume(_ value: Float) {
+        apply(.setSystemVolume(value))
     }
 
     private func applySnapshot(_ snapshot: MixerSnapshot) {
+        guard !isQuitting else { return }
         self.snapshot = snapshot
         showPermissionRepair = !snapshot.permissionGranted
             || snapshot.apps.contains { $0.error == "Could not route audio" }
     }
 
-    func enableLoginOnFirstLaunch() {
+    // MARK: - Quitting
+
+    /// The only way to stop Mix. It tears down every tap and then terminates,
+    /// so quitting removes the menu bar item and stops the mixing together.
+    /// Nothing is left running in the background.
+    func quitMix() {
+        guard !isQuitting else { return }
+        isQuitting = true
+        timer?.invalidate()
+        timer = nil
+        Task {
+            await engine.shutdown()
+            NSApp.terminate(nil)
+        }
+    }
+
+    /// Backstop for a termination Mix did not initiate, such as a logout or a
+    /// kill from Activity Monitor.
+    func tearDownForTermination() {
+        isQuitting = true
+        timer?.invalidate()
+        timer = nil
+        engine.shutdownSynchronously()
+    }
+
+    // MARK: - Launch at Login
+
+    private func enableLoginOnFirstLaunch() {
         let key = "mix.loginPrompted"
         guard UserDefaults.standard.object(forKey: key) == nil else { return }
         UserDefaults.standard.set(true, forKey: key)
-        if SMAppService.mainApp.status != .enabled {
-            Task { try? await SMAppService.mainApp.register() }
-        }
-    }
-
-    var loginEnabled: Bool {
-        SMAppService.mainApp.status == .enabled
+        guard SMAppService.mainApp.status != .enabled else { return }
+        setLogin(enabled: true)
     }
 
     func toggleLogin() {
-        Task {
-            do {
-                if SMAppService.mainApp.status == .enabled {
-                    try await SMAppService.mainApp.unregister()
-                } else {
-                    try await SMAppService.mainApp.register()
-                }
-            } catch {
-                NSLog("Mix login item: \(error)")
-            }
-            objectWillChange.send()
-        }
+        setLogin(enabled: SMAppService.mainApp.status != .enabled)
     }
+
+    private func setLogin(enabled: Bool) {
+        do {
+            if enabled {
+                try SMAppService.mainApp.register()
+            } else {
+                try SMAppService.mainApp.unregister()
+            }
+            loginError = nil
+        } catch {
+            loginError = error.localizedDescription
+            NSLog("Mix: Launch at Login \(enabled ? "register" : "unregister") failed: \(error)")
+        }
+        loginEnabled = SMAppService.mainApp.status == .enabled
+    }
+
+    // MARK: - Permission
 
     func repairPermission() {
-        if let url = URL(string: "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_AudioCapture") {
-            NSWorkspace.shared.open(url)
-        }
-        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AudioCapture") {
-            NSWorkspace.shared.open(url)
-        }
-    }
-
-    func quitMix() {
-        Task {
-            await client.quitAgent()
-            localEngine?.requestQuit {}
-            localEngine = nil
-            try? await SMAppService.agent(plistName: MixXPC.agentPlist).unregister()
-            NSApp.terminate(nil)
-        }
+        let urls = [
+            "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_AudioCapture",
+            "x-apple.systempreferences:com.apple.preference.security?Privacy_AudioCapture"
+        ].compactMap(URL.init(string:))
+        guard let url = urls.first else { return }
+        NSWorkspace.shared.open(url)
     }
 
     func promptAudioIfNeeded() {
@@ -159,9 +131,7 @@ final class MixerStore: ObservableObject {
         alert.runModal()
     }
 
-    func setSystemVolume(_ value: Float) {
-        apply(.setSystemVolume(value))
-    }
+    // MARK: - Icons
 
     func icon(for bundleID: String) -> NSImage {
         if let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).first,

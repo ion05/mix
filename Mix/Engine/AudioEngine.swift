@@ -1,84 +1,76 @@
 import Foundation
 import CoreAudio
-import AppKit
-import ServiceManagement
 
-final class AudioEngine: NSObject, MixAudioServing {
+/// Owns every process tap and aggregate device Mix creates. It lives in the app
+/// process: while Mix is in the menu bar the engine is mixing, and when Mix
+/// quits `shutdown()` tears every route down so nothing survives the process.
+final class AudioEngine: @unchecked Sendable {
     private let queue = DispatchQueue(label: "com.aayanagarwal.mix.engine")
     private let persistence = Persistence()
     private var routes: [String: TapRoute] = [:]
     private var listeners: [(AudioObjectID, AudioObjectPropertySelector, AudioObjectPropertyListenerBlock)] = []
     private var deviceListeners: [(AudioObjectID, AudioObjectPropertySelector, AudioObjectPropertyListenerBlock)] = []
     private var watchedDevices: Set<AudioObjectID> = []
-    private var lastSnapshot = MixerSnapshot.shellPreview()
-    private var cleanQuit = false
-    private var uiAlive = false
-
-    override init() {
-        super.init()
-        queue.async { [weak self] in
-            self?.installListeners()
-            self?.refresh(reason: "launch")
-        }
-    }
+    private var lastSnapshot = MixerSnapshot.empty
+    private var isShutDown = false
 
     func start() {
         queue.async { [weak self] in
-            self?.refresh(reason: "start")
+            guard let self, !self.isShutDown else { return }
+            self.installListeners()
+            self.refresh()
         }
     }
 
-    func fetchSnapshot(withReply reply: @escaping (Data) -> Void) {
-        queue.async { [weak self] in
-            guard let self else { return }
-            self.uiAlive = true
-            self.refresh(reason: "snapshot")
-            reply(self.encode(self.lastSnapshot))
-        }
-    }
-
-    func applyCommand(_ data: Data, withReply reply: @escaping (Data) -> Void) {
-        queue.async { [weak self] in
-            guard let self else { return }
-            if let command = try? JSONDecoder().decode(MixCommand.self, from: data) {
-                self.handle(command)
-            }
-            self.refresh(reason: "command")
-            reply(self.encode(self.lastSnapshot))
-        }
-    }
-
-    func requestQuit(_ reply: @escaping () -> Void) {
-        queue.async { [weak self] in
-            guard let self else { return }
-            self.cleanQuit = true
-            self.teardownAll()
-            reply()
-            guard Bundle.main.bundleIdentifier == MixXPC.agentBundleID else { return }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                exit(0)
-            }
-        }
-    }
-
-    func ping(_ reply: @escaping () -> Void) {
-        queue.async { [weak self] in
-            self?.uiAlive = true
-            reply()
-        }
-    }
-
-    func uiDidDisconnect() {
-        queue.async { [weak self] in
-            guard let self, !self.cleanQuit else { return }
-            self.uiAlive = false
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
-                self.queue.async {
-                    guard !self.cleanQuit, !self.uiAlive else { return }
-                    self.relaunchMix()
+    func snapshot() async -> MixerSnapshot {
+        await withCheckedContinuation { continuation in
+            queue.async { [weak self] in
+                guard let self, !self.isShutDown else {
+                    continuation.resume(returning: .empty)
+                    return
                 }
+                self.refresh()
+                continuation.resume(returning: self.lastSnapshot)
             }
         }
+    }
+
+    func apply(_ command: MixCommand) async -> MixerSnapshot {
+        await withCheckedContinuation { continuation in
+            queue.async { [weak self] in
+                guard let self, !self.isShutDown else {
+                    continuation.resume(returning: .empty)
+                    return
+                }
+                self.handle(command)
+                self.refresh()
+                continuation.resume(returning: self.lastSnapshot)
+            }
+        }
+    }
+
+    /// Stops all mixing. Saved routes stay on disk so the next launch restores
+    /// them, but no tap, aggregate device, or HAL listener outlives this call.
+    func shutdown() async {
+        await withCheckedContinuation { continuation in
+            queue.async { [weak self] in
+                self?.shutdownLocked()
+                continuation.resume()
+            }
+        }
+    }
+
+    /// Same as `shutdown()`, for `applicationWillTerminate` where the process is
+    /// about to die and there is no time left to await anything.
+    func shutdownSynchronously() {
+        queue.sync { shutdownLocked() }
+    }
+
+    private func shutdownLocked() {
+        guard !isShutDown else { return }
+        isShutDown = true
+        teardownAll()
+        lastSnapshot = .empty
     }
 
     private func handle(_ command: MixCommand) {
@@ -141,16 +133,17 @@ final class AudioEngine: NSObject, MixAudioServing {
         )
     }
 
-    private func refresh(reason: String) {
+    private func refresh() {
+        guard !isShutDown else { return }
         let grouped = ProcessCatalog.grouped()
         let systemOutID = DeviceCatalog.defaultOutput()
         let systemInID = DeviceCatalog.defaultInput()
-        let systemOut = DeviceCatalog.info(of: systemOutID) ?? lastSnapshot.systemOutput
-        let systemIn = DeviceCatalog.info(of: systemInID) ?? lastSnapshot.systemInput
+        let systemOut = DeviceCatalog.info(of: systemOutID) ?? .noOutput
+        let systemIn = DeviceCatalog.info(of: systemInID) ?? .noInput
         let systemUID = systemOut.uid
 
         let saved = persistence.snapshot
-        for (bundleID, processes) in grouped where processes.contains(where: \.isRunning) {
+        for (bundleID, processes) in grouped where processes.contains(where: \.isPlayingOutput) {
             guard let savedRoute = saved.apps[bundleID], savedRoute.isManaged else { continue }
             if routes[bundleID] == nil {
                 let route = TapRoute(
@@ -192,10 +185,8 @@ final class AudioEngine: NSObject, MixAudioServing {
             outputs: DeviceCatalog.outputsForPicker(),
             inputs: DeviceCatalog.inputs(),
             apps: makeRows(grouped: grouped, systemOut: systemOut),
-            permissionGranted: !tapDenied,
-            loginItemEnabled: SMAppService.mainApp.status == .enabled
+            permissionGranted: !tapDenied
         )
-        _ = reason
     }
 
     private func rebuildRoute(bundleID: String) {
@@ -233,8 +224,10 @@ final class AudioEngine: NSObject, MixAudioServing {
 
     private func makeRows(grouped: [String: [AudioProcess]], systemOut: DeviceInfo) -> [AppRow] {
         let saved = persistence.snapshot.apps
-        var bundleIDs = Set(grouped.filter { $0.value.contains(where: \.isRunning) }.keys)
-        bundleIDs.formUnion(saved.keys)
+        // Apps that actually have audio right now, plus anything Mix is already
+        // routing. A saved route for an app that is not running stays on disk
+        // and comes back with the app; it never gets a row of its own here.
+        var bundleIDs = Set(grouped.filter { $0.value.contains(where: \.isPlayingOutput) }.keys)
         bundleIDs.formUnion(routes.keys)
 
         return bundleIDs.sorted { ProcessCatalog.displayName(bundleID: $0) < ProcessCatalog.displayName(bundleID: $1) }.map { bundleID in
@@ -284,7 +277,7 @@ final class AudioEngine: NSObject, MixAudioServing {
         into storage: inout [(AudioObjectID, AudioObjectPropertySelector, AudioObjectPropertyListenerBlock)]
     ) -> AudioObjectPropertyListenerBlock {
         let block = HAL.addListener(object, selector, queue: queue) { [weak self] in
-            self?.refresh(reason: HAL.fourCC(selector))
+            self?.refresh()
         }
         storage.append((object, selector, block))
         return block
@@ -317,26 +310,4 @@ final class AudioEngine: NSObject, MixAudioServing {
         watchedDevices.removeAll()
     }
 
-    private func relaunchMix() {
-        guard let url = mixAppURL() else { return }
-        let config = NSWorkspace.OpenConfiguration()
-        config.activates = false
-        NSWorkspace.shared.openApplication(at: url, configuration: config) { _, _ in }
-    }
-
-    private func mixAppURL() -> URL? {
-        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: MixXPC.appBundleID) {
-            return url
-        }
-        var url = URL(fileURLWithPath: CommandLine.arguments[0]).standardizedFileURL
-        while url.path != "/" {
-            if url.pathExtension == "app" { return url }
-            url.deleteLastPathComponent()
-        }
-        return nil
-    }
-
-    private func encode(_ snapshot: MixerSnapshot) -> Data {
-        (try? JSONEncoder().encode(snapshot)) ?? Data()
-    }
 }

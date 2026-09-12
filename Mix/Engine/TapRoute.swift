@@ -122,7 +122,7 @@ final class TapRoute {
         }
         tapID = newTap
 
-        let aggregateUID = "com.aayanagarwal.mix.tap.\(tapUUID.uuidString)"
+        let aggregateUID = MixIdentity.aggregatePrefix + tapUUID.uuidString
         let aggregateName = "Mix Tap \(bundleID)"
         let dict: [String: Any] = [
             kAudioAggregateDeviceNameKey: aggregateName,

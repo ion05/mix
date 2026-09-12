@@ -36,21 +36,45 @@ enum HAL {
         return Int(size)
     }
 
-    static func get<T>(
+    /// Reads a fixed-size scalar property.
+    ///
+    /// The type is passed explicitly instead of being inferred, and that is the
+    /// whole point of the signature. Written as `try? HAL.get(device, sel)` in
+    /// any of the obvious spellings, Swift resolves `T` to `Optional<UInt32>`
+    /// rather than `UInt32`, asks CoreAudio for five bytes instead of four, and
+    /// leaves the optional's tag byte holding whatever was in the freshly
+    /// allocated page. The read then yields the real value or nil at random.
+    /// Naming the type here makes that impossible.
+    static func get<T: BitwiseCopyable>(
+        _ type: T.Type,
         _ object: AudioObjectID,
         _ selector: AudioObjectPropertySelector,
         scope: AudioObjectPropertyScope = kAudioObjectPropertyScopeGlobal
     ) throws -> T {
         var addr = address(selector, scope: scope)
-        var size = UInt32(MemoryLayout<T>.size)
+        let expected = UInt32(MemoryLayout<T>.size)
+        var size = expected
         let pointer = UnsafeMutablePointer<T>.allocate(capacity: 1)
         defer { pointer.deallocate() }
         let err = AudioObjectGetPropertyData(object, &addr, 0, nil, &size, pointer)
         guard err == noErr else { throw HALError.status(err, "get \(fourCC(selector))") }
+        guard size == expected else {
+            throw HALError.status(err, "got \(size) of \(expected) bytes for \(fourCC(selector))")
+        }
         return pointer.pointee
     }
 
-    static func getArray<T>(
+    /// Reads a UInt32 flag property such as `livn` or `mute`.
+    static func flag(
+        _ object: AudioObjectID,
+        _ selector: AudioObjectPropertySelector,
+        scope: AudioObjectPropertyScope = kAudioObjectPropertyScopeGlobal
+    ) -> Bool {
+        let value = try? get(UInt32.self, object, selector, scope: scope)
+        return (value ?? 0) != 0
+    }
+
+    static func getArray<T: BitwiseCopyable>(
         _ object: AudioObjectID,
         _ selector: AudioObjectPropertySelector,
         scope: AudioObjectPropertyScope = kAudioObjectPropertyScopeGlobal
@@ -80,10 +104,10 @@ enum HAL {
         var cf: Unmanaged<CFString>?
         err = AudioObjectGetPropertyData(object, &addr, 0, nil, &size, &cf)
         guard err == noErr, let cf else { throw HALError.status(err, "get \(fourCC(selector))") }
-        return cf.takeUnretainedValue() as String
+        return cf.takeRetainedValue() as String
     }
 
-    static func set<T>(
+    static func set<T: BitwiseCopyable>(
         _ object: AudioObjectID,
         _ selector: AudioObjectPropertySelector,
         _ value: T,
@@ -91,7 +115,10 @@ enum HAL {
     ) throws {
         var addr = address(selector, scope: scope)
         var copy = value
-        let err = AudioObjectSetPropertyData(object, &addr, 0, nil, UInt32(MemoryLayout<T>.size), &copy)
+        let err = withUnsafeMutableBytes(of: &copy) { bytes -> OSStatus in
+            guard let base = bytes.baseAddress else { return kAudio_ParamError }
+            return AudioObjectSetPropertyData(object, &addr, 0, nil, UInt32(bytes.count), base)
+        }
         guard err == noErr else { throw HALError.status(err, "set \(fourCC(selector))") }
     }
 

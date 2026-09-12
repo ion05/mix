@@ -7,11 +7,11 @@ enum DeviceCatalog {
     }
 
     static func defaultOutput() -> AudioObjectID {
-        (try? HAL.get(AudioObjectID.system, kAudioHardwarePropertyDefaultOutputDevice)) ?? 0
+        (try? HAL.get(AudioObjectID.self, .system, kAudioHardwarePropertyDefaultOutputDevice)) ?? 0
     }
 
     static func defaultInput() -> AudioObjectID {
-        (try? HAL.get(AudioObjectID.system, kAudioHardwarePropertyDefaultInputDevice)) ?? 0
+        (try? HAL.get(AudioObjectID.self, .system, kAudioHardwarePropertyDefaultInputDevice)) ?? 0
     }
 
     static func uid(of device: AudioObjectID) -> String? {
@@ -23,11 +23,11 @@ enum DeviceCatalog {
     }
 
     static func transport(of device: AudioObjectID) -> UInt32 {
-        (try? HAL.get(device, kAudioDevicePropertyTransportType)) ?? kAudioDeviceTransportTypeUnknown
+        (try? HAL.get(UInt32.self, device, kAudioDevicePropertyTransportType)) ?? kAudioDeviceTransportTypeUnknown
     }
 
     static func isAlive(_ device: AudioObjectID) -> Bool {
-        ((try? HAL.get(device, kAudioDevicePropertyDeviceIsAlive)) as UInt32?) ?? 0 != 0
+        HAL.flag(device, kAudioDevicePropertyDeviceIsAlive)
     }
 
     static func hasOutput(_ device: AudioObjectID) -> Bool {
@@ -77,7 +77,7 @@ enum DeviceCatalog {
             guard hasOutput(device), isAlive(device), let info = info(of: device) else { return nil }
             if info.isAirPlay { return nil }
             if info.transport == .aggregate { return nil }
-            if info.uid.hasPrefix("com.aayanagarwal.mix") { return nil }
+            if info.uid.hasPrefix(MixIdentity.aggregatePrefix) { return nil }
             return info
         }
     }
@@ -101,7 +101,7 @@ enum DeviceCatalog {
 
     static func volume(of device: AudioObjectID, scope: AudioObjectPropertyScope) -> Float {
         if existsVolume(device, scope, kAudioObjectPropertyElementMain) {
-            return (try? HAL.get(device, kAudioDevicePropertyVolumeScalar, scope: scope)) ?? 0
+            return (try? HAL.get(Float32.self, device, kAudioDevicePropertyVolumeScalar, scope: scope)) ?? 0
         }
         let channels = outputChannels(device, scope)
         let values = channels.compactMap { channel -> Float? in
@@ -129,7 +129,7 @@ enum DeviceCatalog {
     }
 
     static func isMuted(_ device: AudioObjectID, scope: AudioObjectPropertyScope) -> Bool {
-        ((try? HAL.get(device, kAudioDevicePropertyMute, scope: scope)) as UInt32?) ?? 0 != 0
+        HAL.flag(device, kAudioDevicePropertyMute, scope: scope)
     }
 
     static func setMuted(_ muted: Bool, of device: AudioObjectID, scope: AudioObjectPropertyScope) {
@@ -137,7 +137,7 @@ enum DeviceCatalog {
     }
 
     static func sampleRate(_ device: AudioObjectID) -> Float64 {
-        (try? HAL.get(device, kAudioDevicePropertyNominalSampleRate)) ?? 0
+        (try? HAL.get(Float64.self, device, kAudioDevicePropertyNominalSampleRate)) ?? 0
     }
 
     static func isHFPRate(_ rate: Float64) -> Bool {

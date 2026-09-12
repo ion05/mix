@@ -6,23 +6,25 @@ struct AudioProcess: Equatable {
     var objectID: AudioObjectID
     var pid: pid_t
     var bundleID: String
-    var isRunning: Bool
+    /// True only while the process is doing output IO. Mix routes output, so a
+    /// process that is merely listening (Siri, dictation, a meeting app's mic
+    /// leg) must not earn a row in a panel of output sliders.
+    var isPlayingOutput: Bool
 }
 
 enum ProcessCatalog {
     static let ignoredBundleIDs: Set<String> = [
-        MixXPC.appBundleID,
-        MixXPC.agentBundleID
+        MixIdentity.appBundleID
     ]
 
     static func processes() -> [AudioProcess] {
         let ids: [AudioObjectID] = (try? HAL.getArray(AudioObjectID.system, kAudioHardwarePropertyProcessObjectList)) ?? []
         return ids.compactMap { objectID in
-            let pid: pid_t = (try? HAL.get(objectID, kAudioProcessPropertyPID)) ?? 0
+            let pid: pid_t = (try? HAL.get(pid_t.self, objectID, kAudioProcessPropertyPID)) ?? 0
             let bundleID = (try? HAL.getCFString(objectID, kAudioProcessPropertyBundleID)) ?? ""
             guard !bundleID.isEmpty, !ignoredBundleIDs.contains(bundleID) else { return nil }
-            let running: UInt32 = (try? HAL.get(objectID, kAudioProcessPropertyIsRunning)) ?? 0
-            return AudioProcess(objectID: objectID, pid: pid, bundleID: bundleID, isRunning: running != 0)
+            let playing = HAL.flag(objectID, kAudioProcessPropertyIsRunningOutput)
+            return AudioProcess(objectID: objectID, pid: pid, bundleID: bundleID, isPlayingOutput: playing)
         }
     }
 
