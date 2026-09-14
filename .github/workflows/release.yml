@@ -111,7 +111,10 @@ jobs:
           echo "DMG_PATH=$RUNNER_TEMP/Mix-$VERSION.dmg" >> "$GITHUB_ENV"
 
       - name: Verify notarization ticket
-        run: spctl -a -t open --context context:primary-signing-identifier -v "$RUNNER_TEMP/export/Mix.app"
+        run: |
+          xattr -w com.apple.quarantine "0181;00000000;Safari;" "$RUNNER_TEMP/export/Mix.app"
+          spctl -a -vvv --type execute "$RUNNER_TEMP/export/Mix.app"
+          xattr -d com.apple.quarantine "$RUNNER_TEMP/export/Mix.app"
 
       - name: Clean up keychain
         if: always()
