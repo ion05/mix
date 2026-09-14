@@ -5,6 +5,9 @@ on:
     tags:
       - "v*.*.*"
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: macos-15
@@ -40,6 +43,10 @@ jobs:
           echo "version=$tag" >> "$GITHUB_OUTPUT"
 
       - name: Archive
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          VERSION: ${{ steps.version.outputs.version }}
+          BUILD_NUMBER: ${{ github.run_number }}
         run: |
           xcodebuild archive \
             -project Mix.xcodeproj \
@@ -47,13 +54,15 @@ jobs:
             -configuration Release \
             -archivePath "$RUNNER_TEMP/Mix.xcarchive" \
             -destination "generic/platform=macOS" \
-            DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="Developer ID Application" \
-            MARKETING_VERSION="${{ steps.version.outputs.version }}" \
-            CURRENT_PROJECT_VERSION="${{ github.run_number }}"
+            MARKETING_VERSION="$VERSION" \
+            CURRENT_PROJECT_VERSION="$BUILD_NUMBER"
 
       - name: Export signed app
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           cat > "$RUNNER_TEMP/ExportOptions.plist" <<PLIST
           <?xml version="1.0" encoding="UTF-8"?>
@@ -61,7 +70,7 @@ jobs:
           <plist version="1.0">
           <dict>
             <key>method</key><string>developer-id</string>
-            <key>teamID</key><string>${{ secrets.APPLE_TEAM_ID }}</string>
+            <key>teamID</key><string>$APPLE_TEAM_ID</string>
             <key>signingStyle</key><string>manual</string>
           </dict>
           </plist>
@@ -90,15 +99,16 @@ jobs:
           xcrun stapler staple "$RUNNER_TEMP/export/Mix.app"
 
       - name: Package DMG
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
           set -euo pipefail
-          version="${{ steps.version.outputs.version }}"
           dmg_dir="$RUNNER_TEMP/dmg"
           mkdir -p "$dmg_dir"
           cp -R "$RUNNER_TEMP/export/Mix.app" "$dmg_dir/"
           ln -s /Applications "$dmg_dir/Applications"
-          hdiutil create -volname "Mix" -srcfolder "$dmg_dir" -ov -format UDZO "$RUNNER_TEMP/Mix-$version.dmg"
-          echo "DMG_PATH=$RUNNER_TEMP/Mix-$version.dmg" >> "$GITHUB_ENV"
+          hdiutil create -volname "Mix" -srcfolder "$dmg_dir" -ov -format UDZO "$RUNNER_TEMP/Mix-$VERSION.dmg"
+          echo "DMG_PATH=$RUNNER_TEMP/Mix-$VERSION.dmg" >> "$GITHUB_ENV"
 
       - name: Verify notarization ticket
         run: spctl -a -t open --context context:primary-signing-identifier -v "$RUNNER_TEMP/export/Mix.app"
