@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0.15" y1="0.05" x2="0.85" y2="0.95">
+      <stop offset="0%"   stop-color="#6CC0FF"/>
+      <stop offset="38%"  stop-color="#1C93FF"/>
+      <stop offset="72%"  stop-color="#0464E0"/>
+      <stop offset="100%" stop-color="#023FA0"/>
+    </linearGradient>
+
+    <radialGradient id="sheen" cx="38%" cy="16%" r="65%">
+      <stop offset="0%"  stop-color="#FFFFFF" stop-opacity="0.40"/>
+      <stop offset="45%" stop-color="#FFFFFF" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+
+    <linearGradient id="floor" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#00184A" stop-opacity="0"/>
+      <stop offset="68%"  stop-color="#00184A" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#00184A" stop-opacity="0.28"/>
+    </linearGradient>
+
+    <filter id="drop" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="16" stdDeviation="20" flood-color="#001B4D" flood-opacity="0.30"/>
+    </filter>
+
+    <clipPath id="squircle">
+      <rect x="100" y="100" width="824" height="824" rx="184"/>
+    </clipPath>
+  </defs>
+
+  <rect x="100" y="100" width="824" height="824" rx="184" fill="url(#bg)" filter="url(#drop)"/>
+
+  <g clip-path="url(#squircle)">
+    <rect x="100" y="100" width="824" height="824" fill="url(#sheen)"/>
+    <rect x="100" y="100" width="824" height="824" fill="url(#floor)"/>
+    <rect x="101" y="101" width="822" height="822" rx="183" fill="none" stroke="#FFFFFF" stroke-opacity="0.16" stroke-width="2"/>
+  </g>
+
+  <g transform="translate(480,512)">
+    <path d="
+      M -158,-70
+      L -108,-70
+      L 26,-166
+      L 26,166
+      L -108,70
+      L -158,70
+      A 22,22 0 0 1 -180,48
+      L -180,-48
+      A 22,22 0 0 1 -158,-70
+      Z"
+      fill="#FFFFFF"/>
+
+    <g fill="none" stroke="#FFFFFF" stroke-linecap="round">
+      <path d="M108,-84 C182,-84 182,84 108,84" stroke-width="36" opacity="0.95"/>
+      <path d="M158,-140 C270,-140 270,140 158,140" stroke-width="32" opacity="0.62"/>
+      <path d="M206,-196 C358,-196 358,196 206,196" stroke-width="28" opacity="0.34"/>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1320 800">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"  stop-color="#EEF6FF"/>
+      <stop offset="100%" stop-color="#FFFFFF"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="0%" r="75%">
+      <stop offset="0%"  stop-color="#0A84FF" stop-opacity="0.18"/>
+      <stop offset="60%" stop-color="#0A84FF" stop-opacity="0.05"/>
+      <stop offset="100%" stop-color="#0A84FF" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="60"/>
+    </filter>
+  </defs>
+
+  <rect width="1320" height="800" fill="url(#bg)"/>
+  <rect width="1320" height="800" fill="url(#glow)"/>
+
+  <!-- soft color blobs for depth -->
+  <circle cx="90" cy="650" r="260" fill="#0A84FF" opacity="0.14" filter="url(#soft)"/>
+  <circle cx="1260" cy="90" r="280" fill="#34C759" opacity="0.10" filter="url(#soft)"/>
+  <circle cx="1240" cy="700" r="220" fill="#0A84FF" opacity="0.12" filter="url(#soft)"/>
+
+  <!-- big corner glyph, bleeding off the edge -->
+  <g transform="translate(1140,760) scale(1.25)" opacity="0.13">
+    <path d="
+      M -158,-70 L -108,-70 L 26,-166 L 26,166 L -108,70 L -158,70
+      A 22,22 0 0 1 -180,48 L -180,-48 A 22,22 0 0 1 -158,-70 Z"
+      fill="#0A64D6"/>
+    <g fill="none" stroke="#0A64D6" stroke-linecap="round">
+      <path d="M108,-84 C182,-84 182,84 108,84" stroke-width="36"/>
+      <path d="M158,-140 C270,-140 270,140 158,140" stroke-width="32"/>
+      <path d="M206,-196 C358,-196 358,196 206,196" stroke-width="28"/>
+    </g>
+  </g>
+
+  <!-- equalizer bars along the bottom, on-brand for an audio mixer -->
+  <g fill="#0A84FF">
+    <rect x="40"  y="758" width="14" height="26" rx="7" opacity="0.20"/>
+    <rect x="66"  y="742" width="14" height="42" rx="7" opacity="0.24"/>
+    <rect x="92"  y="752" width="14" height="32" rx="7" opacity="0.20"/>
+    <rect x="118" y="730" width="14" height="54" rx="7" opacity="0.26"/>
+    <rect x="144" y="748" width="14" height="36" rx="7" opacity="0.20"/>
+    <rect x="170" y="762" width="14" height="22" rx="7" opacity="0.16"/>
+
+    <rect x="1136" y="756" width="14" height="28" rx="7" opacity="0.16"/>
+    <rect x="1162" y="738" width="14" height="46" rx="7" opacity="0.22"/>
+    <rect x="1188" y="748" width="14" height="36" rx="7" opacity="0.20"/>
+    <rect x="1214" y="726" width="14" height="58" rx="7" opacity="0.26"/>
+    <rect x="1240" y="744" width="14" height="40" rx="7" opacity="0.22"/>
+    <rect x="1266" y="758" width="14" height="26" rx="7" opacity="0.18"/>
+  </g>
+
+  <!-- soft halo behind the drag arrow -->
+  <circle cx="660" cy="360" r="230" fill="#0A84FF" opacity="0.05" filter="url(#soft)"/>
+
+  <path d="M 540,380 C 640,320 700,320 780,375"
+    fill="none" stroke="#0A84FF" stroke-opacity="0.6" stroke-width="7"
+    stroke-linecap="round" stroke-dasharray="2 22"/>
+  <path d="M 780,375 L 758,358 M 780,375 L 762,392"
+    fill="none" stroke="#0A84FF" stroke-opacity="0.6" stroke-width="7" stroke-linecap="round"/>
+
+  <text x="660" y="648" text-anchor="middle"
+    font-family="-apple-system, Helvetica Neue, Helvetica, Arial, sans-serif"
+    font-size="26" fill="#7B8794">Drag Mix into Applications to install</text>
+</svg>
