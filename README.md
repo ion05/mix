@@ -1,5 +1,7 @@
 # Mix
 
+[![Download for macOS](https://img.shields.io/github/v/release/ion05/mix?label=Download&style=for-the-badge)](https://github.com/ion05/mix/releases/latest)
+
 A macOS menu bar app that sends each app's audio to whichever output device you
 choose. Take the call on your AirPods while the music keeps playing through the
 speakers.
