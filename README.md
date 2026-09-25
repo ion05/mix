@@ -32,6 +32,9 @@ per app, from a Control Center style panel in the menu bar.
 - **Updates itself.** Choose *Check for Updates…* in the gear menu. Mix
   downloads the new version, swaps itself out, and relaunches, and your routes
   carry over.
+- **Keeps system audio put.** Turn on *Keep System Audio When Devices Connect*
+  in the gear menu and a speaker you connect only plays the apps pinned to it.
+  macOS no longer moves your system output and microphone over to it.
 - **Falls back gracefully.** Unplug the device an app was pinned to and its
   audio moves to the system output, with the panel saying so in amber rather
   than pretending nothing happened.

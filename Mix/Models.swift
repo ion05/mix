@@ -8,6 +8,8 @@ enum MixIdentity {
     /// Prefix of every aggregate device Mix creates, so it can filter its own
     /// devices back out of the picker.
     static let aggregatePrefix = "com.aayanagarwal.mix.tap."
+    /// UserDefaults flag behind "Keep System Audio When Devices Connect".
+    static let holdSystemDevicesKey = "mix.holdSystemDevices"
 }
 
 struct MixerSnapshot: Codable, Equatable {
