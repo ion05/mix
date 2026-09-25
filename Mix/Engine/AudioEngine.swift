@@ -19,9 +19,14 @@ final class AudioEngine: @unchecked Sendable {
     /// Device UIDs seen on the last refresh. Nil until the first one, so the
     /// devices present at launch never count as just connected.
     private var knownUIDs: Set<String>?
-    private var arrivedAt: [String: Date] = [:]
+    /// When each device connected, tracked per side so undoing an output
+    /// takeover doesn't stop Mix from also undoing the input one.
+    private var outputArrivals: [String: Date] = [:]
+    private var inputArrivals: [String: Date] = [:]
     private var lastOutputUID: String?
     private var lastInputUID: String?
+    /// How long after connecting a device counts as "just connected".
+    private let arrivalWindow: TimeInterval = 3
 
     func start() {
         queue.async { [weak self] in
@@ -91,10 +96,10 @@ final class AudioEngine: @unchecked Sendable {
             let device = DeviceCatalog.defaultOutput()
             DeviceCatalog.setMuted(muted, of: device, scope: kAudioObjectPropertyScopeOutput)
         case .setDefaultOutput(let uid):
-            arrivedAt.removeValue(forKey: uid)
+            outputArrivals.removeValue(forKey: uid)
             try? DeviceCatalog.setDefaultOutput(uid: uid)
         case .setDefaultInput(let uid):
-            arrivedAt.removeValue(forKey: uid)
+            inputArrivals.removeValue(forKey: uid)
             try? DeviceCatalog.setDefaultInput(uid: uid)
         case .setSystemInputVolume(let value):
             let device = DeviceCatalog.defaultInput()
@@ -206,27 +211,38 @@ final class AudioEngine: @unchecked Sendable {
     /// macOS makes a newly connected device the system output (and often the
     /// input). With "Keep System Audio When Devices Connect" on, a default that
     /// moved to a device which appeared moments ago is put back where it was.
-    // ponytail: 3s window heuristic; picking the new device from Control Center
-    // within 3s of it connecting gets reverted too.
+    // ponytail: arrival-window heuristic. Picking a device in Control Center that
+    // connects it (AirPods, Continuity mic) is undone once; picking it again sticks.
     private func holdSystemDevices() {
         let now = Date()
         let current = Set(DeviceCatalog.allDevices().compactMap(DeviceCatalog.uid(of:)))
         if let known = knownUIDs {
-            for uid in current.subtracting(known) { arrivedAt[uid] = now }
+            for uid in current.subtracting(known) {
+                outputArrivals[uid] = now
+                inputArrivals[uid] = now
+            }
         }
         knownUIDs = current
-        arrivedAt = arrivedAt.filter { now.timeIntervalSince($0.value) < 3 }
+        outputArrivals = outputArrivals.filter { now.timeIntervalSince($0.value) < arrivalWindow }
+        inputArrivals = inputArrivals.filter { now.timeIntervalSince($0.value) < arrivalWindow }
 
         guard UserDefaults.standard.bool(forKey: MixIdentity.holdSystemDevicesKey) else { return }
-        restore(DeviceCatalog.defaultOutput(), to: lastOutputUID, set: DeviceCatalog.setDefaultOutput(uid:))
-        restore(DeviceCatalog.defaultInput(), to: lastInputUID, set: DeviceCatalog.setDefaultInput(uid:))
+        restore(DeviceCatalog.defaultOutput(), to: lastOutputUID, arrivals: &outputArrivals, set: DeviceCatalog.setDefaultOutput(uid:))
+        restore(DeviceCatalog.defaultInput(), to: lastInputUID, arrivals: &inputArrivals, set: DeviceCatalog.setDefaultInput(uid:))
     }
 
-    private func restore(_ device: AudioObjectID, to previous: String?, set: (String) throws -> Void) {
+    private func restore(
+        _ device: AudioObjectID,
+        to previous: String?,
+        arrivals: inout [String: Date],
+        set: (String) throws -> Void
+    ) {
         guard let previous, let uid = DeviceCatalog.uid(of: device), uid != previous,
-              arrivedAt[uid] != nil,
+              arrivals[uid] != nil,
               let old = DeviceCatalog.device(uid: previous), DeviceCatalog.isAlive(old) else { return }
         try? set(previous)
+        // Once per arrival, so a second pick sticks and nothing ping-pongs.
+        arrivals.removeValue(forKey: uid)
     }
 
     private func rebuildRoute(bundleID: String) {
