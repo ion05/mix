@@ -7,7 +7,8 @@
 #
 #   scripts/release.sh path/to/Mix.app
 #
-# Writes Mix-<version>.dmg, Mix-<version>.zip and appcast.xml to build/release.
+# Writes Mix.dmg, Mix.zip and appcast.xml to build/release. The names never
+# change, so the README buttons can link to releases/latest/download/Mix.dmg.
 # Upload all three to the GitHub release tagged v<version> and mark it Latest.
 # Installed copies read appcast.xml from the latest release.
 set -euo pipefail
@@ -36,7 +37,7 @@ if [ ! -x "$sign_update" ]; then
 fi
 
 out="build/release"
-zip="Mix-$version.zip"
+zip="Mix.zip"
 mkdir -p "$out"
 rm -f "$out/$zip"
 ditto -c -k --sequesterRsrc --keepParent "$app" "$out/$zip"
@@ -63,7 +64,7 @@ XML
 
 # Installer DMG on design/dmg-background.png: a 660x400 window with Mix left
 # of the drag arrow and Applications right of it. The @2x art keeps it sharp.
-dmg="Mix-$version.dmg"
+dmg="Mix.dmg"
 bg_dir=$(mktemp -d)
 magick design/dmg-background.png -resize 660x400 "$bg_dir/bg.png"
 cp design/dmg-background.png "$bg_dir/bg@2x.png"
