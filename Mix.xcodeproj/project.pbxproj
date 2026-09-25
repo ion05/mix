@@ -19,6 +19,7 @@
 		B00100000000000000000014 /* Processes.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00200000000000000000007 /* Processes.swift */; };
 		B00100000000000000000015 /* Persistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00200000000000000000008 /* Persistence.swift */; };
 		B00100000000000000000020 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = SP0100000000000000000002 /* Sparkle */; };
+		B00100000000000000000021 /* MoveToApplications.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000012 /* MoveToApplications.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -36,6 +37,7 @@
 		F00200000000000000000006 /* Devices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Devices.swift; sourceTree = "<group>"; };
 		F00200000000000000000007 /* Processes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Processes.swift; sourceTree = "<group>"; };
 		F00200000000000000000008 /* Persistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Persistence.swift; sourceTree = "<group>"; };
+		F00100000000000000000012 /* MoveToApplications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoveToApplications.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -64,6 +66,7 @@
 				F00100000000000000000001 /* MixApp.swift */,
 				F00100000000000000000002 /* MixerStore.swift */,
 				F00100000000000000000005 /* Models.swift */,
+				F00100000000000000000012 /* MoveToApplications.swift */,
 				G00000000000000000000006 /* Views */,
 				G00000000000000000000003 /* Engine */,
 				F00100000000000000000007 /* Assets.xcassets */,
@@ -176,6 +179,7 @@
 				B00100000000000000000002 /* MixerStore.swift in Sources */,
 				B00100000000000000000004 /* MixerPopover.swift in Sources */,
 				B00100000000000000000005 /* Models.swift in Sources */,
+				B00100000000000000000021 /* MoveToApplications.swift in Sources */,
 				B00100000000000000000010 /* AudioEngine.swift in Sources */,
 				B00100000000000000000011 /* TapRoute.swift in Sources */,
 				B00100000000000000000012 /* HAL.swift in Sources */,

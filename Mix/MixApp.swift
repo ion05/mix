@@ -31,6 +31,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        // Asked before the engine starts, so a copy that is about to quit
+        // never taps any audio.
+        guard !MoveToApplications.offerIfNeeded() else { return }
         MixerStore.shared.start()
         installScrollWheel()
         MixWindowStyler.styleExtraWindows()
