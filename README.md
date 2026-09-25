@@ -137,6 +137,9 @@ user's accent colour, SF Pro only, no custom chrome.
 - **Browsers spawn and kill renderers constantly.** The set of processes Mix
   taps for a browser changes as you open and close tabs, which rebuilds the
   route. Audio may glitch briefly when that happens.
+- **Keeping system audio put can undo a pick once.** With *Keep System Audio
+  When Devices Connect* on, choosing a device in Control Center that connects it
+  (AirPods, say) gets switched back the first time. Pick it again and it sticks.
 - **No tests yet.** There is no test target. Contributions welcome.
 - **No app icon yet.** The asset catalogue has the slots and no images. Mix has
   no Dock icon, so this shows up only in Finder and System Settings.
