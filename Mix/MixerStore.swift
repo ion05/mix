@@ -19,6 +19,9 @@ final class MixerStore: ObservableObject {
     /// Non-nil when a Launch at Login change failed. Surfaced in the menu so a
     /// registration failure can never pass silently again.
     @Published private(set) var loginError: String?
+    /// Keep system output and input where they are when a device connects.
+    /// The engine reads the same UserDefaults key on every refresh.
+    @Published private(set) var holdSystemDevices = UserDefaults.standard.bool(forKey: MixIdentity.holdSystemDevicesKey)
 
     private let engine = AudioEngine()
     /// Sparkle, started on the first "Check for Updates…" rather than at launch,
@@ -114,6 +117,11 @@ final class MixerStore: ObservableObject {
             NSLog("Mix: Launch at Login \(enabled ? "register" : "unregister") failed: \(error)")
         }
         loginEnabled = SMAppService.mainApp.status == .enabled
+    }
+
+    func toggleHoldSystemDevices() {
+        holdSystemDevices.toggle()
+        UserDefaults.standard.set(holdSystemDevices, forKey: MixIdentity.holdSystemDevicesKey)
     }
 
     // MARK: - Updates

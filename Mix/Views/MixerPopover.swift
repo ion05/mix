@@ -445,6 +445,10 @@ struct FooterBar: View {
                 if let loginError = store.loginError {
                     Text("Launch at Login failed: \(loginError)")
                 }
+                Toggle("Keep System Audio When Devices Connect", isOn: Binding(
+                    get: { store.holdSystemDevices },
+                    set: { _ in store.toggleHoldSystemDevices() }
+                ))
                 Button("Repair Audio Permission") {
                     store.repairPermission()
                 }

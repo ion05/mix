@@ -16,6 +16,12 @@ final class AudioEngine: @unchecked Sendable {
     private var watchedDevices: Set<AudioObjectID> = []
     private var lastSnapshot = MixerSnapshot.empty
     private var isShutDown = false
+    /// Device UIDs seen on the last refresh. Nil until the first one, so the
+    /// devices present at launch never count as just connected.
+    private var knownUIDs: Set<String>?
+    private var arrivedAt: [String: Date] = [:]
+    private var lastOutputUID: String?
+    private var lastInputUID: String?
 
     func start() {
         queue.async { [weak self] in
@@ -85,8 +91,10 @@ final class AudioEngine: @unchecked Sendable {
             let device = DeviceCatalog.defaultOutput()
             DeviceCatalog.setMuted(muted, of: device, scope: kAudioObjectPropertyScopeOutput)
         case .setDefaultOutput(let uid):
+            arrivedAt.removeValue(forKey: uid)
             try? DeviceCatalog.setDefaultOutput(uid: uid)
         case .setDefaultInput(let uid):
+            arrivedAt.removeValue(forKey: uid)
             try? DeviceCatalog.setDefaultInput(uid: uid)
         case .setSystemInputVolume(let value):
             let device = DeviceCatalog.defaultInput()
@@ -138,12 +146,15 @@ final class AudioEngine: @unchecked Sendable {
 
     private func refresh() {
         guard !isShutDown else { return }
+        holdSystemDevices()
         let grouped = ProcessCatalog.grouped()
         let systemOutID = DeviceCatalog.defaultOutput()
         let systemInID = DeviceCatalog.defaultInput()
         let systemOut = DeviceCatalog.info(of: systemOutID) ?? .noOutput
         let systemIn = DeviceCatalog.info(of: systemInID) ?? .noInput
         let systemUID = systemOut.uid
+        lastOutputUID = systemOut.uid.isEmpty ? nil : systemOut.uid
+        lastInputUID = systemIn.uid.isEmpty ? nil : systemIn.uid
 
         let saved = persistence.snapshot
         for (bundleID, processes) in grouped where processes.contains(where: \.isPlayingOutput) {
@@ -190,6 +201,32 @@ final class AudioEngine: @unchecked Sendable {
             apps: makeRows(grouped: grouped, systemOut: systemOut),
             permissionGranted: !tapDenied
         )
+    }
+
+    /// macOS makes a newly connected device the system output (and often the
+    /// input). With "Keep System Audio When Devices Connect" on, a default that
+    /// moved to a device which appeared moments ago is put back where it was.
+    // ponytail: 3s window heuristic; picking the new device from Control Center
+    // within 3s of it connecting gets reverted too.
+    private func holdSystemDevices() {
+        let now = Date()
+        let current = Set(DeviceCatalog.allDevices().compactMap(DeviceCatalog.uid(of:)))
+        if let known = knownUIDs {
+            for uid in current.subtracting(known) { arrivedAt[uid] = now }
+        }
+        knownUIDs = current
+        arrivedAt = arrivedAt.filter { now.timeIntervalSince($0.value) < 3 }
+
+        guard UserDefaults.standard.bool(forKey: MixIdentity.holdSystemDevicesKey) else { return }
+        restore(DeviceCatalog.defaultOutput(), to: lastOutputUID, set: DeviceCatalog.setDefaultOutput(uid:))
+        restore(DeviceCatalog.defaultInput(), to: lastInputUID, set: DeviceCatalog.setDefaultInput(uid:))
+    }
+
+    private func restore(_ device: AudioObjectID, to previous: String?, set: (String) throws -> Void) {
+        guard let previous, let uid = DeviceCatalog.uid(of: device), uid != previous,
+              arrivedAt[uid] != nil,
+              let old = DeviceCatalog.device(uid: previous), DeviceCatalog.isAlive(old) else { return }
+        try? set(previous)
     }
 
     private func rebuildRoute(bundleID: String) {
