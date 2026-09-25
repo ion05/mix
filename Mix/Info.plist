@@ -33,6 +33,6 @@
 	<key>SUFeedURL</key>
 	<string>https://github.com/ion05/mix/releases/latest/download/appcast.xml</string>
 	<key>SUPublicEDKey</key>
-	<string>PASTE_SPARKLE_PUBLIC_KEY_HERE</string>
+	<string>znvBepOktV3q03IezPF38iTKETkiRQYidBk+552YS+Q=</string>
 </dict>
 </plist>
