@@ -449,6 +449,9 @@ struct FooterBar: View {
                     store.repairPermission()
                 }
                 .foregroundStyle(store.showPermissionRepair ? MixPalette.danger : .primary)
+                Button("Check for Updates…") {
+                    store.checkForUpdates()
+                }
                 Divider()
                 Button("Quit Mix") {
                     store.quitMix()
