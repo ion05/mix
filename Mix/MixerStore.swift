@@ -21,8 +21,10 @@ final class MixerStore: ObservableObject {
     @Published private(set) var loginError: String?
 
     private let engine = AudioEngine()
-    /// Sparkle, checking only when asked (SUEnableAutomaticChecks is off).
-    private let updater = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
+    /// Sparkle, started on the first "Check for Updates…" rather than at launch,
+    /// so an updater error can never hold up the audio engine starting.
+    private lazy var updater = SPUStandardUpdaterController(startingUpdater: false, updaterDelegate: nil, userDriverDelegate: nil)
+    private var updaterStarted = false
     private var timer: Timer?
     private var isQuitting = false
 
@@ -119,6 +121,10 @@ final class MixerStore: ObservableObject {
     func checkForUpdates() {
         // Mix has no Dock icon, so bring it forward or Sparkle's window opens behind.
         NSApp.activate()
+        if !updaterStarted {
+            updaterStarted = true
+            updater.startUpdater()
+        }
         updater.checkForUpdates(nil)
     }
 
