@@ -28,6 +28,9 @@ per app, from a Control Center style panel in the menu bar.
   Mix and System Settings.
 - **Routes are remembered.** Quit Mix, reopen it, and your apps land back on the
   devices you chose.
+- **Updates itself.** Choose *Check for Updates…* in the gear menu. Mix
+  downloads the new version, swaps itself out, and relaunches, and your routes
+  carry over.
 - **Falls back gracefully.** Unplug the device an app was pinned to and its
   audio moves to the system output, with the panel saying so in amber rather
   than pretending nothing happened.
@@ -49,6 +52,10 @@ open Mix.xcodeproj
 In Xcode, select the Mix target, open Signing & Capabilities, and set Team to
 your own. Change the bundle identifier from `com.aayanagarwal.mix` to something
 under a domain you control. Then build and run.
+
+If you ship your own builds, point `SUFeedURL` and `SUPublicEDKey` in
+`Mix/Info.plist` at your own releases and Sparkle key. Otherwise *Check for
+Updates…* offers the official Mix.
 
 Mix appears in the menu bar. It has no Dock icon and no windows.
 

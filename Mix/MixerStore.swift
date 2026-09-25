@@ -4,6 +4,7 @@
 import Foundation
 import AppKit
 import ServiceManagement
+import Sparkle
 import SwiftUI
 
 /// Single source of truth for the popover. Mix runs one process, so the engine
@@ -20,6 +21,8 @@ final class MixerStore: ObservableObject {
     @Published private(set) var loginError: String?
 
     private let engine = AudioEngine()
+    /// Sparkle, checking only when asked (SUEnableAutomaticChecks is off).
+    private let updater = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
     private var timer: Timer?
     private var isQuitting = false
 
@@ -109,6 +112,14 @@ final class MixerStore: ObservableObject {
             NSLog("Mix: Launch at Login \(enabled ? "register" : "unregister") failed: \(error)")
         }
         loginEnabled = SMAppService.mainApp.status == .enabled
+    }
+
+    // MARK: - Updates
+
+    func checkForUpdates() {
+        // Mix has no Dock icon, so bring it forward or Sparkle's window opens behind.
+        NSApp.activate()
+        updater.checkForUpdates(nil)
     }
 
     // MARK: - Permission
