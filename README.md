@@ -57,6 +57,11 @@ If you ship your own builds, point `SUFeedURL` and `SUPublicEDKey` in
 `Mix/Info.plist` at your own releases and Sparkle key. Otherwise *Check for
 Updates…* offers the official Mix.
 
+To release, raise Version and Build on the Mix target, then Archive,
+notarize and export Mix.app. Run `scripts/release.sh path/to/Mix.app`, and
+upload the DMG plus `build/release/Mix-<version>.zip` and `appcast.xml` to a
+GitHub release tagged `v<version>`.
+
 Mix appears in the menu bar. It has no Dock icon and no windows.
 
 ## Permission
