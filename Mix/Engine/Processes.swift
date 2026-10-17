@@ -47,6 +47,13 @@ enum ProcessCatalog {
         Dictionary(grouping: processes(), by: \.bundleID)
     }
 
+    /// The device an app is already playing to, so a temporary duck route can
+    /// replay there rather than at the system output.
+    static func outputDeviceUID(of process: AudioProcess) -> String? {
+        let devices: [AudioObjectID] = (try? HAL.getArray(process.objectID, kAudioProcessPropertyDevices, scope: kAudioObjectPropertyScopeOutput)) ?? []
+        return devices.first.flatMap(DeviceCatalog.uid(of:))
+    }
+
     static func displayName(bundleID: String) -> String {
         if let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).first,
            let name = app.localizedName, !name.isEmpty {

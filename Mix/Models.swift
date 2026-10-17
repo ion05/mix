@@ -10,6 +10,26 @@ enum MixIdentity {
     static let aggregatePrefix = "com.aayanagarwal.mix.tap."
     /// UserDefaults flag behind "Keep System Audio When Devices Connect".
     static let holdSystemDevicesKey = "mix.holdSystemDevices"
+    /// Darwin notifications for ducking. Anything local can post them; Mix
+    /// posts `ducked` back once every playing app is tapped.
+    static let duckNotification = "com.aayanagarwal.mix.duck"
+    static let unduckNotification = "com.aayanagarwal.mix.unduck"
+    static let duckedNotification = "com.aayanagarwal.mix.ducked"
+    /// Calls are never ducked: muffling the other person is worse than a
+    /// competing alert.
+    static let callBundleIDs: Set<String> = [
+        "us.zoom.xos",
+        "com.apple.FaceTime",
+        "com.hnc.Discord",
+        "com.microsoft.teams2",
+        "com.tinyspeck.slackmacgap",
+        "net.whatsapp.WhatsApp",
+        "com.apple.TelephonyUtilities"
+    ]
+
+    static func isCallApp(_ bundleID: String) -> Bool {
+        callBundleIDs.contains(bundleID) || bundleID.contains("callservicesd")
+    }
 }
 
 struct MixerSnapshot: Codable, Equatable {
