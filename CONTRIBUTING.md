@@ -67,13 +67,14 @@ apps all behave differently.
 Keep commits focused. One logical change per commit is easier to review and
 easier to revert.
 
-There is no CI yet, so build and run before you open a pull request.
+There is no CI yet, so run `scripts/check.sh`, then build and run before you
+open a pull request.
 
 ## Good first issues
 
 The limitations in `README.md` are the honest backlog:
 
-- **A test target.** There is none. Even a few tests around `Processes.swift`
+- **A test target.** There is none beyond `scripts/check.sh`. Even a few tests around `Processes.swift`
   owner resolution and `Devices.swift` classification would help.
 - **An app icon.** The asset catalogue has empty slots waiting.
 - **Browser renderer churn.** Chromium spawns and kills renderers as tabs open

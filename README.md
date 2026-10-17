@@ -35,6 +35,12 @@ per app, from a Control Center style panel in the menu bar.
 - **Keeps system audio put.** Turn on *Keep System Audio When Devices Connect*
   in the gear menu and a speaker you connect only plays the apps pinned to it.
   macOS no longer moves your system output and microphone over to it.
+- **Ducking.** Post the Darwin notification `com.aayanagarwal.mix.duck` and every
+  other playing app fades to 25% in about 150 ms; `com.aayanagarwal.mix.unduck`
+  fades them back. Mix replies with `com.aayanagarwal.mix.ducked` once every
+  playing app is tapped, and restores volume on its own after 10 seconds if no
+  unduck arrives. Call apps (Zoom, FaceTime, Discord, Teams, Slack, WhatsApp)
+  are never ducked. Ducking is temporary and never saved.
 - **Falls back gracefully.** Unplug the device an app was pinned to and its
   audio moves to the system output, with the panel saying so in amber rather
   than pretending nothing happened.
@@ -140,7 +146,10 @@ user's accent colour, SF Pro only, no custom chrome.
 - **Keeping system audio put can undo a pick once.** With *Keep System Audio
   When Devices Connect* on, choosing a device in Control Center that connects it
   (AirPods, say) gets switched back the first time. Pick it again and it sticks.
-- **No tests yet.** There is no test target. Contributions welcome.
+- **Any local app can duck.** The duck notification is unauthenticated, so any
+  process on the Mac can lower everyone's volume for 10 seconds.
+- **No test target.** `scripts/check.sh` runs a few checks on the ducking maths
+  and call-app filter. Contributions welcome.
 - **No app icon yet.** The asset catalogue has the slots and no images. Mix has
   no Dock icon, so this shows up only in Finder and System Settings.
 
