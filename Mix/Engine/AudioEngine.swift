@@ -3,6 +3,7 @@
 
 import Foundation
 import CoreAudio
+import notify
 
 /// Owns every process tap and aggregate device Mix creates. It lives in the app
 /// process: while Mix is in the menu bar the engine is mixing, and when Mix
@@ -27,6 +28,16 @@ final class AudioEngine: @unchecked Sendable {
     private var lastInputUID: String?
     /// How long after connecting a device counts as "just connected".
     private let arrivalWindow: TimeInterval = 3
+    /// Temporary ducking for voice alerts. Never persisted.
+    private var duckLevel: Float = 1
+    private var duckTimeout: DispatchWorkItem?
+    private var duckRelease: DispatchWorkItem?
+    private var notifyTokens: [Int32] = []
+    private let duckedLevel: Float = 0.25
+    /// Safety net: if nobody posts unduck, volume comes back on its own.
+    private let duckTimeoutSeconds: TimeInterval = 10
+    /// Routes made only for the duck outlive the fade back up by this long.
+    private let duckLingerSeconds: TimeInterval = 2
 
     func start() {
         queue.async { [weak self] in
@@ -176,6 +187,19 @@ final class AudioEngine: @unchecked Sendable {
             }
         }
 
+        if duckLevel < 1 {
+            for (bundleID, processes) in grouped where routes[bundleID] == nil && !MixIdentity.isCallApp(bundleID) {
+                guard let playing = processes.first(where: \.isPlayingOutput) else { continue }
+                let route = TapRoute(bundleID: bundleID, volume: 1, muted: false, outputUID: nil)
+                route.duckUID = ProcessCatalog.outputDeviceUID(of: playing)
+                routes[bundleID] = route
+            }
+            for route in routes.values where !MixIdentity.isCallApp(route.bundleID) {
+                route.setDuck(duckLevel)
+                route.duckHold = true
+            }
+        }
+
         for route in routes.values {
             let processes = grouped[route.bundleID] ?? []
             rebuild(route: route, processes: processes, systemUID: systemUID)
@@ -271,7 +295,7 @@ final class AudioEngine: @unchecked Sendable {
     }
 
     private func resolvedUID(for route: TapRoute, systemUID: String) -> String {
-        guard let wanted = route.outputUID else { return systemUID }
+        guard let wanted = route.outputUID ?? route.duckUID else { return systemUID }
         if let device = DeviceCatalog.device(uid: wanted), DeviceCatalog.isAlive(device) {
             return wanted
         }
@@ -318,7 +342,50 @@ final class AudioEngine: @unchecked Sendable {
         }
     }
 
+    private func duck() {
+        guard !isShutDown else { return }
+        duckRelease?.cancel()
+        duckTimeout?.cancel()
+        let timeout = DispatchWorkItem { [weak self] in self?.unduck() }
+        duckTimeout = timeout
+        queue.asyncAfter(deadline: .now() + duckTimeoutSeconds, execute: timeout)
+        duckLevel = duckedLevel
+        refresh()
+        notify_post(MixIdentity.duckedNotification)
+    }
+
+    private func unduck() {
+        guard !isShutDown, duckLevel < 1 else { return }
+        duckTimeout?.cancel()
+        duckLevel = 1
+        for route in routes.values { route.setDuck(1) }
+        let release = DispatchWorkItem { [weak self] in self?.releaseDuck() }
+        duckRelease = release
+        queue.asyncAfter(deadline: .now() + duckLingerSeconds, execute: release)
+    }
+
+    /// Drops the hold once the fade back up has finished, and tears down the
+    /// routes that existed only for the duck.
+    private func releaseDuck() {
+        for (bundleID, route) in routes where route.duckHold {
+            route.duckHold = false
+            route.duckUID = nil
+            if !route.needsAudio {
+                route.teardown()
+                routes.removeValue(forKey: bundleID)
+            }
+        }
+    }
+
     private func installListeners() {
+        var duckToken: Int32 = 0
+        if notify_register_dispatch(MixIdentity.duckNotification, &duckToken, queue, { [weak self] _ in
+            self?.duck()
+        }) == NOTIFY_STATUS_OK { notifyTokens.append(duckToken) }
+        var unduckToken: Int32 = 0
+        if notify_register_dispatch(MixIdentity.unduckNotification, &unduckToken, queue, { [weak self] _ in
+            self?.unduck()
+        }) == NOTIFY_STATUS_OK { notifyTokens.append(unduckToken) }
         listen(AudioObjectID.system, kAudioHardwarePropertyDevices, into: &listeners)
         listen(AudioObjectID.system, kAudioHardwarePropertyDefaultOutputDevice, into: &listeners)
         listen(AudioObjectID.system, kAudioHardwarePropertyDefaultInputDevice, into: &listeners)
@@ -353,6 +420,10 @@ final class AudioEngine: @unchecked Sendable {
     }
 
     private func teardownAll() {
+        duckTimeout?.cancel()
+        duckRelease?.cancel()
+        for token in notifyTokens { notify_cancel(token) }
+        notifyTokens.removeAll()
         for route in routes.values {
             route.teardown()
         }

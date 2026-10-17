@@ -6,10 +6,41 @@ import CoreAudio
 import os
 
 final class TapRoute {
+    /// What the IO proc reads under one lock: where the gain is heading and
+    /// where it is now. The proc walks `current` toward `target` each callback.
+    struct GainState {
+        var target: Float
+        var current: Float
+    }
+
+    /// Seconds a full 0-to-1 gain swing takes. A duck to 25% is three quarters
+    /// of that, which is the ~150 ms fade.
+    static let fullSwingSeconds = 0.2
+
+    /// The next gain after one callback of `frames` frames: at most
+    /// `frames / (fullSwingSeconds * sampleRate)` closer to `to`, landing
+    /// exactly on it. Without a usable sample rate it jumps straight there.
+    static func rampStep(from: Float, to: Float, frames: Int, sampleRate: Float64) -> Float {
+        guard sampleRate > 0 else { return to }
+        let step = Float(Float64(frames) / (fullSwingSeconds * sampleRate))
+        return abs(to - from) <= step ? to : (to > from ? from + step : from - step)
+    }
+
+    static func gain(volume: Float, muted: Bool, duck: Float) -> Float {
+        muted ? 0 : volume * duck
+    }
+
     let bundleID: String
     private(set) var volume: Float
     private(set) var muted: Bool
     private(set) var outputUID: String?
+    /// Temporary ducking, never persisted. 1 is no duck.
+    private(set) var duck: Float = 1
+    /// Keeps a route that only exists for the duck alive until Mix lets go.
+    var duckHold = false
+    /// Where the app was already playing, for a route that exists only to duck
+    /// it; the replay goes there instead of the system output.
+    var duckUID: String?
     private(set) var assignedUID: String?
     private(set) var isActive = false
     private(set) var error: String?
@@ -20,14 +51,15 @@ final class TapRoute {
     private var aggregateID: AudioObjectID = AudioObjectID(kAudioObjectUnknown)
     private var ioProcID: AudioDeviceIOProcID?
     private var tapUUID = UUID()
-    private let gain = OSAllocatedUnfairLock(initialState: Float(1))
+    private let gain = OSAllocatedUnfairLock(initialState: GainState(target: 1, current: 1))
 
     init(bundleID: String, volume: Float, muted: Bool, outputUID: String?) {
         self.bundleID = bundleID
         self.volume = volume
         self.muted = muted
         self.outputUID = outputUID
-        applyGain()
+        let initial = Self.gain(volume: volume, muted: muted, duck: 1)
+        gain.withLock { $0 = GainState(target: initial, current: initial) }
     }
 
     deinit {
@@ -35,7 +67,12 @@ final class TapRoute {
     }
 
     var needsAudio: Bool {
-        volume != 1 || muted || outputUID != nil
+        volume != 1 || muted || outputUID != nil || duckHold
+    }
+
+    func setDuck(_ value: Float) {
+        duck = value
+        applyGain()
     }
 
     func setVolume(_ value: Float) {
@@ -107,7 +144,8 @@ final class TapRoute {
     }
 
     private func applyGain() {
-        gain.withLock { $0 = muted ? 0 : volume }
+        let target = Self.gain(volume: volume, muted: muted, duck: duck)
+        gain.withLock { $0.target = target }
     }
 
     private func createTap(processIDs: [AudioObjectID], outputDevice: AudioObjectID, outputUID: String) throws {
@@ -150,26 +188,39 @@ final class TapRoute {
         guard aggErr == noErr else { throw HALError.status(aggErr, "aggregate") }
         aggregateID = newAgg
 
+        let sampleRate = DeviceCatalog.sampleRate(outputDevice)
         let lock = gain
         var procID: AudioDeviceIOProcID?
         let ioErr = AudioDeviceCreateIOProcIDWithBlock(&procID, aggregateID, nil) { _, inputData, _, outputData, _ in
             let buffers = UnsafeMutableAudioBufferListPointer(outputData)
             let inBuffers = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: inputData))
-            let gainValue = lock.withLock { $0 }
+            let firstBytes = buffers.first.map { Int($0.mDataByteSize) } ?? 0
+            let firstChannels = buffers.first.map { max(1, Int($0.mNumberChannels)) } ?? 1
+            let (from, to) = lock.withLock { state -> (Float, Float) in
+                let from = state.current
+                state.current = Self.rampStep(
+                    from: from, to: state.target,
+                    frames: firstBytes / 4 / firstChannels, sampleRate: sampleRate
+                )
+                return (from, state.current)
+            }
             for (index, buffer) in buffers.enumerated() {
                 guard index < inBuffers.count else { break }
                 let inBuf = inBuffers[index]
-                let frames = Int(buffer.mDataByteSize / 4)
+                let samples = Int(buffer.mDataByteSize / 4)
                 guard let outPtr = buffer.mData?.assumingMemoryBound(to: Float.self),
                       let inPtr = inBuf.mData?.assumingMemoryBound(to: Float.self) else { continue }
-                if gainValue == 0 {
+                if from == 0 && to == 0 {
                     memset(outPtr, 0, Int(buffer.mDataByteSize))
-                } else if gainValue == 1 {
+                } else if from == 1 && to == 1 {
                     memcpy(outPtr, inPtr, Int(min(buffer.mDataByteSize, inBuf.mDataByteSize)))
                 } else {
-                    let count = min(frames, Int(inBuf.mDataByteSize / 4))
+                    let count = min(samples, Int(inBuf.mDataByteSize / 4))
+                    let channels = max(1, Int(buffer.mNumberChannels))
+                    let frames = Float(max(1, samples / channels))
+                    let slope = (to - from) / frames
                     for i in 0..<count {
-                        outPtr[i] = inPtr[i] * gainValue
+                        outPtr[i] = inPtr[i] * (from + slope * Float(i / channels))
                     }
                 }
             }
@@ -180,7 +231,7 @@ final class TapRoute {
         guard startErr == noErr else { throw HALError.status(startErr, "start") }
         assignedUID = outputUID
         lastProcessIDs = processIDs
-        lastSampleRate = DeviceCatalog.sampleRate(outputDevice)
+        lastSampleRate = sampleRate
         isActive = true
     }
 }
