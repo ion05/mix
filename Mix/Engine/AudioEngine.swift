@@ -103,9 +103,16 @@ final class AudioEngine: @unchecked Sendable {
         case .setSystemVolume(let value):
             let device = DeviceCatalog.defaultOutput()
             DeviceCatalog.setVolume(value, of: device, scope: kAudioObjectPropertyScopeOutput)
-        case .setSystemMuted(let muted):
-            let device = DeviceCatalog.defaultOutput()
-            DeviceCatalog.setMuted(muted, of: device, scope: kAudioObjectPropertyScopeOutput)
+        case .setOutputMuted(let uid, let muted):
+            // Mix mutes a device by silencing the audio it sends there, never
+            // with the device's own mute: that one silenced every device at
+            // once. Unmuting still clears a hardware mute, so the button always
+            // brings the sound back whoever muted it.
+            persistence.setOutputMuted(muted, uid: uid)
+            if !muted, let device = DeviceCatalog.device(uid: uid),
+               DeviceCatalog.isMuted(device, scope: kAudioObjectPropertyScopeOutput) {
+                DeviceCatalog.setMuted(false, of: device, scope: kAudioObjectPropertyScopeOutput)
+            }
         case .setDefaultOutput(let uid):
             outputArrivals.removeValue(forKey: uid)
             try? DeviceCatalog.setDefaultOutput(uid: uid)
@@ -191,7 +198,7 @@ final class AudioEngine: @unchecked Sendable {
             for (bundleID, processes) in grouped where routes[bundleID] == nil && !MixIdentity.isCallApp(bundleID) {
                 guard let playing = processes.first(where: \.isPlayingOutput) else { continue }
                 let route = TapRoute(bundleID: bundleID, volume: 1, muted: false, outputUID: nil)
-                route.duckUID = ProcessCatalog.outputDeviceUID(of: playing)
+                route.heldUID = ProcessCatalog.outputDeviceUID(of: playing)
                 routes[bundleID] = route
             }
             for route in routes.values where !MixIdentity.isCallApp(route.bundleID) {
@@ -199,6 +206,9 @@ final class AudioEngine: @unchecked Sendable {
                 route.duckHold = true
             }
         }
+
+        let mutedUIDs = persistence.mutedOutputUIDs
+        applyOutputMutes(mutedUIDs, grouped: grouped, systemUID: systemUID)
 
         for route in routes.values {
             let processes = grouped[route.bundleID] ?? []
@@ -221,13 +231,15 @@ final class AudioEngine: @unchecked Sendable {
             systemOutput: systemOut,
             systemInput: systemIn,
             systemVolume: DeviceCatalog.volume(of: systemOutID, scope: kAudioObjectPropertyScopeOutput),
-            systemMuted: DeviceCatalog.isMuted(systemOutID, scope: kAudioObjectPropertyScopeOutput),
+            systemMuted: mutedUIDs.contains(systemUID)
+                || DeviceCatalog.isMuted(systemOutID, scope: kAudioObjectPropertyScopeOutput),
+            mutedOutputUIDs: mutedUIDs,
             systemInputVolume: DeviceCatalog.hasInput(systemInID)
                 ? DeviceCatalog.volume(of: systemInID, scope: kAudioObjectPropertyScopeInput)
                 : nil,
             outputs: DeviceCatalog.outputsForPicker(),
             inputs: DeviceCatalog.inputs(),
-            apps: makeRows(grouped: grouped, systemOut: systemOut),
+            apps: makeRows(grouped: grouped, systemOut: systemOut, mutedUIDs: mutedUIDs),
             permissionGranted: !tapDenied
         )
     }
@@ -269,6 +281,42 @@ final class AudioEngine: @unchecked Sendable {
         arrivals.removeValue(forKey: uid)
     }
 
+    /// Muting a device taps every app playing to it and plays it back at zero,
+    /// the same way ducking works, so apps on other devices never notice.
+    /// An app already routed by Mix just has its gain dropped. Routes that
+    /// exist only for the mute go away once their device is unmuted, or once
+    /// the app has no audio processes left.
+    private func applyOutputMutes(_ mutedUIDs: Set<String>, grouped: [String: [AudioProcess]], systemUID: String) {
+        if !mutedUIDs.isEmpty {
+            for (bundleID, processes) in grouped where routes[bundleID] == nil {
+                guard let playing = processes.first(where: \.isPlayingOutput) else { continue }
+                let playingUID = ProcessCatalog.outputDeviceUID(of: playing) ?? systemUID
+                guard mutedUIDs.contains(playingUID) else { continue }
+                let route = TapRoute(bundleID: bundleID, volume: 1, muted: false, outputUID: nil)
+                // An app on the system output keeps following it, so switching
+                // the system output away from a muted device lets it play.
+                if playingUID != systemUID { route.heldUID = playingUID }
+                route.muteHold = true
+                routes[bundleID] = route
+            }
+        }
+        for (bundleID, route) in routes {
+            let destination = resolvedUID(for: route, systemUID: systemUID)
+            let muted = mutedUIDs.contains(destination)
+            route.setDeviceMuted(muted)
+            guard route.muteHold else { continue }
+            let alive = !(grouped[bundleID] ?? []).isEmpty
+            if !muted || !alive {
+                route.muteHold = false
+                if !route.duckHold { route.heldUID = nil }
+                if !route.needsAudio {
+                    route.teardown()
+                    routes.removeValue(forKey: bundleID)
+                }
+            }
+        }
+    }
+
     private func rebuildRoute(bundleID: String) {
         let grouped = ProcessCatalog.grouped()
         guard let route = routes[bundleID] else { return }
@@ -295,20 +343,22 @@ final class AudioEngine: @unchecked Sendable {
     }
 
     private func resolvedUID(for route: TapRoute, systemUID: String) -> String {
-        guard let wanted = route.outputUID ?? route.duckUID else { return systemUID }
+        guard let wanted = route.outputUID ?? route.heldUID else { return systemUID }
         if let device = DeviceCatalog.device(uid: wanted), DeviceCatalog.isAlive(device) {
             return wanted
         }
         return systemUID
     }
 
-    private func makeRows(grouped: [String: [AudioProcess]], systemOut: DeviceInfo) -> [AppRow] {
+    private func makeRows(grouped: [String: [AudioProcess]], systemOut: DeviceInfo, mutedUIDs: Set<String>) -> [AppRow] {
         let saved = persistence.snapshot.apps
         // Apps that actually have audio right now, plus anything Mix is already
         // routing. A saved route for an app that is not running stays on disk
         // and comes back with the app; it never gets a row of its own here.
         var bundleIDs = Set(grouped.filter { $0.value.contains(where: \.isPlayingOutput) }.keys)
-        bundleIDs.formUnion(routes.keys)
+        // A route held only for a device mute is not something the user set,
+        // so a paused app does not linger in the list because of it.
+        bundleIDs.formUnion(routes.filter { !$0.value.isMuteHoldOnly }.keys)
 
         return bundleIDs.sorted { ProcessCatalog.displayName(bundleID: $0) < ProcessCatalog.displayName(bundleID: $1) }.map { bundleID in
             let route = routes[bundleID]
@@ -337,6 +387,7 @@ final class AudioEngine: @unchecked Sendable {
                 outputUID: outputUID,
                 destinationName: dest.name,
                 destinationIsFallback: fallback,
+                destinationMuted: mutedUIDs.contains(dest.uid),
                 error: route?.error
             )
         }
@@ -369,7 +420,7 @@ final class AudioEngine: @unchecked Sendable {
     private func releaseDuck() {
         for (bundleID, route) in routes where route.duckHold {
             route.duckHold = false
-            route.duckUID = nil
+            if !route.muteHold { route.heldUID = nil }
             if !route.needsAudio {
                 route.teardown()
                 routes.removeValue(forKey: bundleID)

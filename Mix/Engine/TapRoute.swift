@@ -38,9 +38,15 @@ final class TapRoute {
     private(set) var duck: Float = 1
     /// Keeps a route that only exists for the duck alive until Mix lets go.
     var duckHold = false
+    /// Keeps a route that only exists because its device is muted.
+    var muteHold = false
     /// Where the app was already playing, for a route that exists only to duck
-    /// it; the replay goes there instead of the system output.
-    var duckUID: String?
+    /// or mute it; the replay goes there instead of the system output. Nil for
+    /// an app that was following the system output, so it keeps following it.
+    var heldUID: String?
+    /// The device this route plays to is muted. Never persisted on the route;
+    /// the engine sets it from the muted device list on every refresh.
+    private(set) var deviceMuted = false
     private(set) var assignedUID: String?
     private(set) var isActive = false
     private(set) var error: String?
@@ -67,7 +73,28 @@ final class TapRoute {
     }
 
     var needsAudio: Bool {
-        volume != 1 || muted || outputUID != nil || duckHold
+        isUserManaged || duckHold || muteHold
+    }
+
+    /// Something the user set on this app, as opposed to a temporary hold.
+    var isUserManaged: Bool {
+        volume != 1 || muted || outputUID != nil
+    }
+
+    /// Exists only to silence a muted device, so it earns no row of its own.
+    var isMuteHoldOnly: Bool {
+        muteHold && !duckHold && !isUserManaged
+    }
+
+    func setDeviceMuted(_ value: Bool) {
+        guard deviceMuted != value else { return }
+        deviceMuted = value
+        applyGain()
+        // Before the tap exists the app is still playing on its own, so a route
+        // born muted starts silent rather than fading down from full volume.
+        if !isActive {
+            gain.withLock { $0.current = $0.target }
+        }
     }
 
     func setDuck(_ value: Float) {
@@ -144,7 +171,7 @@ final class TapRoute {
     }
 
     private func applyGain() {
-        let target = Self.gain(volume: volume, muted: muted, duck: duck)
+        let target = Self.gain(volume: volume, muted: muted || deviceMuted, duck: duck)
         gain.withLock { $0.target = target }
     }
 

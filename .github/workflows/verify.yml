@@ -1,0 +1,17 @@
+name: verify
+on:
+  push:
+    branches: [claude/project-thread-3tkayv]
+jobs:
+  build:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - name: checks
+        run: |
+          xcodebuild -version
+          scripts/check.sh
+      - name: build
+        run: |
+          xcodebuild -project Mix.xcodeproj -scheme Mix -configuration Debug -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO build | tail -40
+          exit ${PIPESTATUS[0]}

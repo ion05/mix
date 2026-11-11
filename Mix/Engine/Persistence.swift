@@ -47,6 +47,21 @@ final class Persistence {
         }
     }
 
+    var mutedOutputUIDs: Set<String> {
+        queue.sync { store.mutedOutputUIDs }
+    }
+
+    func setOutputMuted(_ muted: Bool, uid: String) {
+        queue.sync {
+            if muted {
+                store.mutedOutputUIDs.insert(uid)
+            } else {
+                store.mutedOutputUIDs.remove(uid)
+            }
+            persistLocked()
+        }
+    }
+
     func markPermissionPrompted() {
         queue.sync {
             store.didRequestAudioPermission = true

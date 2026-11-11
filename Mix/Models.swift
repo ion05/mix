@@ -36,7 +36,11 @@ struct MixerSnapshot: Codable, Equatable {
     var systemOutput: DeviceInfo
     var systemInput: DeviceInfo
     var systemVolume: Float
+    /// True when the system output is muted, by Mix or by macOS itself.
     var systemMuted: Bool
+    /// Output devices Mix is holding silent. Only audio headed to these is
+    /// muted; every other device keeps playing.
+    var mutedOutputUIDs: Set<String>
     var systemInputVolume: Float?
     var outputs: [DeviceInfo]
     var inputs: [DeviceInfo]
@@ -73,6 +77,8 @@ struct AppRow: Codable, Equatable, Identifiable {
     var outputUID: String?
     var destinationName: String
     var destinationIsFallback: Bool
+    /// The device this app plays through is muted as a whole.
+    var destinationMuted: Bool
     var error: String?
 
     var id: String { bundleID }
@@ -80,7 +86,8 @@ struct AppRow: Codable, Equatable, Identifiable {
 
 enum MixCommand: Codable {
     case setSystemVolume(Float)
-    case setSystemMuted(Bool)
+    /// Mutes one output device. Audio Mix sends anywhere else is untouched.
+    case setOutputMuted(uid: String, muted: Bool)
     case setDefaultOutput(String)
     case setDefaultInput(String)
     case setSystemInputVolume(Float)
@@ -102,8 +109,24 @@ struct SavedRoute: Codable, Equatable {
 struct SavedStore: Codable, Equatable {
     var apps: [String: SavedRoute]
     var didRequestAudioPermission: Bool
+    var mutedOutputUIDs: Set<String>
 
-    static let empty = SavedStore(apps: [:], didRequestAudioPermission: false)
+    static let empty = SavedStore(apps: [:], didRequestAudioPermission: false, mutedOutputUIDs: [])
+
+    init(apps: [String: SavedRoute], didRequestAudioPermission: Bool, mutedOutputUIDs: Set<String>) {
+        self.apps = apps
+        self.didRequestAudioPermission = didRequestAudioPermission
+        self.mutedOutputUIDs = mutedOutputUIDs
+    }
+
+    /// routes.json written before per-device mute has no `mutedOutputUIDs`.
+    /// Synthesised decoding would reject the whole file and lose every route.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        apps = try container.decode([String: SavedRoute].self, forKey: .apps)
+        didRequestAudioPermission = try container.decode(Bool.self, forKey: .didRequestAudioPermission)
+        mutedOutputUIDs = try container.decodeIfPresent(Set<String>.self, forKey: .mutedOutputUIDs) ?? []
+    }
 }
 
 extension SavedRoute {
@@ -140,6 +163,7 @@ extension MixerSnapshot {
         systemInput: .noInput,
         systemVolume: 0,
         systemMuted: false,
+        mutedOutputUIDs: [],
         systemInputVolume: nil,
         outputs: [],
         inputs: [],
