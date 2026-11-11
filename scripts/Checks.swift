@@ -3,7 +3,8 @@
 
 import Foundation
 
-/// Run by scripts/check.sh. Covers the ducking maths and the call-app filter.
+/// Run by scripts/check.sh. Covers the ducking maths, the call-app filter and
+/// when dictation pauses and resumes media.
 @main
 struct Checks {
     static func main() {
@@ -40,5 +41,73 @@ struct Checks {
         precondition(MixIdentity.isCallApp("us.zoom.xos"))
         precondition(MixIdentity.isCallApp("com.apple.callservicesd"))
         precondition(!MixIdentity.isCallApp("com.spotify.client"))
+
+        checkDictationPause()
+    }
+
+    static func checkDictationPause() {
+        // The plain take: mic opens, music is playing, it pauses, mic closes,
+        // and after the grace it plays again.
+        var d = DictationPause()
+        precondition(d.recordingChanged(true, enabled: true) == .checkPlaying(generation: 1))
+        precondition(d.playingAnswer(true, generation: 1) == .pause)
+        precondition(d.recordingChanged(false, enabled: true) == .scheduleResume(generation: 2))
+        precondition(d.resumeDue(generation: 2) == .resume)
+        precondition(!d.pausedByMix)
+
+        // Nothing was playing: no pause, and so never a play afterwards.
+        d = DictationPause()
+        _ = d.recordingChanged(true, enabled: true)
+        precondition(d.playingAnswer(false, generation: 1) == .none)
+        precondition(d.recordingChanged(false, enabled: true) == .none)
+
+        // A take shorter than the playing check pauses nothing.
+        d = DictationPause()
+        _ = d.recordingChanged(true, enabled: true)
+        _ = d.recordingChanged(false, enabled: true)
+        precondition(d.playingAnswer(true, generation: 1) == .none)
+        precondition(!d.pausedByMix)
+
+        // A second take inside the grace keeps the music paused and the stale
+        // resume timer does nothing; the second take's end resumes it.
+        d = DictationPause()
+        _ = d.recordingChanged(true, enabled: true)
+        _ = d.playingAnswer(true, generation: 1)
+        _ = d.recordingChanged(false, enabled: true)
+        precondition(d.recordingChanged(true, enabled: true) == .none)
+        precondition(d.resumeDue(generation: 2) == .none)
+        precondition(d.pausedByMix)
+        precondition(d.recordingChanged(false, enabled: true) == .scheduleResume(generation: 4))
+        precondition(d.resumeDue(generation: 4) == .resume)
+
+        // Repeated reports of the same state change nothing.
+        d = DictationPause()
+        _ = d.recordingChanged(true, enabled: true)
+        precondition(d.recordingChanged(true, enabled: true) == .none)
+        precondition(d.generation == 1)
+
+        // Turned off: no check, no pause.
+        d = DictationPause()
+        precondition(d.recordingChanged(true, enabled: false) == .none)
+        precondition(d.recordingChanged(false, enabled: false) == .none)
+
+        // Turned off mid-take: what Mix paused still comes back.
+        d = DictationPause()
+        _ = d.recordingChanged(true, enabled: true)
+        _ = d.playingAnswer(true, generation: 1)
+        precondition(d.recordingChanged(false, enabled: false) == .scheduleResume(generation: 2))
+        precondition(d.resumeDue(generation: 2) == .resume)
+
+        // Quitting mid-take resumes, and only once.
+        d = DictationPause()
+        _ = d.recordingChanged(true, enabled: true)
+        _ = d.playingAnswer(true, generation: 1)
+        precondition(d.shutdown() == .resume)
+        precondition(d.shutdown() == .none)
+        precondition(d.playingAnswer(true, generation: 1) == .none)
+
+        // Quitting when Mix paused nothing presses nothing.
+        d = DictationPause()
+        precondition(d.shutdown() == .none)
     }
 }

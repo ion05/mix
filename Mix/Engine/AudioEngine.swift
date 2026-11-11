@@ -38,6 +38,13 @@ final class AudioEngine: @unchecked Sendable {
     private let duckTimeoutSeconds: TimeInterval = 10
     /// Routes made only for the duck outlive the fade back up by this long.
     private let duckLingerSeconds: TimeInterval = 2
+    /// Media paused because an app started dictating. Never persisted.
+    private var dictation = DictationPause()
+    /// One listener per audio process on its "recording" flag, so a pause
+    /// lands as the mic opens rather than on the next one-second poll.
+    private var inputWatches: [AudioObjectID: AudioObjectPropertyListenerBlock] = [:]
+    /// How long the mic has to stay closed before paused media plays again.
+    private let dictationResumeGrace: TimeInterval = 0.5
 
     func start() {
         queue.async { [weak self] in
@@ -94,6 +101,11 @@ final class AudioEngine: @unchecked Sendable {
     private func shutdownLocked() {
         guard !isShutDown else { return }
         isShutDown = true
+        // Sent here, synchronously, because on a logout the process is gone
+        // the moment this returns and an async hop would never run.
+        if dictation.shutdown() == .resume {
+            NowPlaying.send(.play)
+        }
         teardownAll()
         lastSnapshot = .empty
     }
@@ -164,6 +176,7 @@ final class AudioEngine: @unchecked Sendable {
         guard !isShutDown else { return }
         holdSystemDevices()
         let grouped = ProcessCatalog.grouped()
+        updateDictation(grouped.values.flatMap { $0 })
         let systemOutID = DeviceCatalog.defaultOutput()
         let systemInID = DeviceCatalog.defaultInput()
         let systemOut = DeviceCatalog.info(of: systemOutID) ?? .noOutput
@@ -377,6 +390,57 @@ final class AudioEngine: @unchecked Sendable {
         }
     }
 
+    // MARK: - Pausing media for dictation
+
+    private func evaluateDictation() {
+        guard !isShutDown else { return }
+        updateDictation(ProcessCatalog.processes())
+    }
+
+    private func updateDictation(_ processes: [AudioProcess]) {
+        let enabled = MixIdentity.pausesMediaWhileDictating
+        syncInputWatches(enabled ? Set(processes.map(\.objectID)) : [])
+        // Calls are left alone: a meeting holds the mic for an hour and the
+        // music was presumably already dealt with when it started.
+        let recording = processes.contains { $0.isRecordingInput && !MixIdentity.isCallApp($0.bundleID) }
+        perform(dictation.recordingChanged(recording, enabled: enabled))
+    }
+
+    private func perform(_ effect: DictationPause.Effect) {
+        switch effect {
+        case .none:
+            break
+        case .checkPlaying(let generation):
+            NowPlaying.isPlaying { [weak self] playing in
+                self?.queue.async {
+                    guard let self, !self.isShutDown else { return }
+                    self.perform(self.dictation.playingAnswer(playing, generation: generation))
+                }
+            }
+        case .pause:
+            NowPlaying.send(.pause)
+        case .scheduleResume(let generation):
+            queue.asyncAfter(deadline: .now() + dictationResumeGrace) { [weak self] in
+                guard let self, !self.isShutDown else { return }
+                self.perform(self.dictation.resumeDue(generation: generation))
+            }
+        case .resume:
+            NowPlaying.send(.play)
+        }
+    }
+
+    private func syncInputWatches(_ objects: Set<AudioObjectID>) {
+        for (object, block) in inputWatches where !objects.contains(object) {
+            HAL.removeListener(object, kAudioProcessPropertyIsRunningInput, queue: queue, block: block)
+            inputWatches.removeValue(forKey: object)
+        }
+        for object in objects where inputWatches[object] == nil {
+            inputWatches[object] = HAL.addListener(object, kAudioProcessPropertyIsRunningInput, queue: queue) { [weak self] in
+                self?.evaluateDictation()
+            }
+        }
+    }
+
     private func installListeners() {
         var duckToken: Int32 = 0
         if notify_register_dispatch(MixIdentity.duckNotification, &duckToken, queue, { [weak self] _ in
@@ -434,6 +498,7 @@ final class AudioEngine: @unchecked Sendable {
         listeners.removeAll()
         deviceListeners.removeAll()
         watchedDevices.removeAll()
+        syncInputWatches([])
     }
 
 }

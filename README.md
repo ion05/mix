@@ -41,6 +41,12 @@ per app, from a Control Center style panel in the menu bar.
   playing app is tapped, and restores volume on its own after 10 seconds if no
   unduck arrives. Call apps (Zoom, FaceTime, Discord, Teams, Slack, WhatsApp)
   are never ducked. Ducking is temporary and never saved.
+- **Pauses media while you dictate.** When an app starts recording from the
+  microphone (Willow, Claude's dictation, Apple Dictation, anything that turns
+  on the orange mic dot), Mix pauses whatever is Now Playing, and plays it again
+  half a second after the mic closes. It only ever resumes what it paused
+  itself, so media you had stopped stays stopped. Call apps opening the mic do
+  not count. Turn it off with *Pause Media While Dictating* in the gear menu.
 - **Falls back gracefully.** Unplug the device an app was pinned to and its
   audio moves to the system output, with the panel saying so in amber rather
   than pretending nothing happened.
@@ -148,8 +154,14 @@ user's accent colour, SF Pro only, no custom chrome.
   (AirPods, say) gets switched back the first time. Pick it again and it sticks.
 - **Any local app can duck.** The duck notification is unauthenticated, so any
   process on the Mac can lower everyone's volume for 10 seconds.
-- **No test target.** `scripts/check.sh` runs a few checks on the ducking maths
-  and call-app filter. Contributions welcome.
+- **Pausing for dictation leans on private MediaRemote.** Mix sends play and
+  pause in-process and asks what is playing through `osascript`, because macOS
+  answers that question only for Apple-signed processes. A future macOS can
+  close either door, and then nothing pauses (it never presses play by mistake).
+- **An app that keeps the mic open all the time counts as always dictating.**
+  It pauses media once when it opens the mic and never again until it closes it.
+- **No test target.** `scripts/check.sh` runs a few checks on the ducking maths,
+  the call-app filter and the dictation pause logic. Contributions welcome.
 - **No app icon yet.** The asset catalogue has the slots and no images. Mix has
   no Dock icon, so this shows up only in Finder and System Settings.
 

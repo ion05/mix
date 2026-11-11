@@ -17,6 +17,9 @@ struct AudioProcess: Equatable {
     /// process that is merely listening (Siri, dictation, a meeting app's mic
     /// leg) must not earn a row in a panel of output sliders.
     var isPlayingOutput: Bool
+    /// True while the process is recording from an input device, which is
+    /// when macOS shows the orange mic dot. Drives pausing media for dictation.
+    var isRecordingInput: Bool
 }
 
 enum ProcessCatalog {
@@ -35,7 +38,14 @@ enum ProcessCatalog {
             let bundleID = owningBundleID(pid: pid) ?? reported
             guard !bundleID.isEmpty, !ignoredBundleIDs.contains(bundleID) else { return nil }
             let playing = HAL.flag(objectID, kAudioProcessPropertyIsRunningOutput)
-            return AudioProcess(objectID: objectID, pid: pid, bundleID: bundleID, isPlayingOutput: playing)
+            let recording = HAL.flag(objectID, kAudioProcessPropertyIsRunningInput)
+            return AudioProcess(
+                objectID: objectID,
+                pid: pid,
+                bundleID: bundleID,
+                isPlayingOutput: playing,
+                isRecordingInput: recording
+            )
         }
         ownerCache.prune(keeping: live)
         return processes

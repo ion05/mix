@@ -25,6 +25,7 @@ Mix/Engine/Devices.swift      CoreAudio device enumeration and volume
 Mix/Engine/Processes.swift    audio processes, resolved to their owning app
 Mix/Engine/HAL.swift          typed CoreAudio property access
 Mix/Engine/Persistence.swift  saved routes on disk
+Mix/Engine/DictationPause.swift  pausing Now Playing media while an app dictates
 ```
 
 Everything runs in one process. There is no helper, no daemon, and no XPC.
