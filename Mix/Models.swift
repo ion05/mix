@@ -10,6 +10,13 @@ enum MixIdentity {
     static let aggregatePrefix = "com.aayanagarwal.mix.tap."
     /// UserDefaults flag behind "Keep System Audio When Devices Connect".
     static let holdSystemDevicesKey = "mix.holdSystemDevices"
+    /// UserDefaults flag behind "Pause Media While Dictating". Missing means
+    /// on, so the feature works from the first launch that has it.
+    static let pauseMediaWhileDictatingKey = "mix.pauseMediaWhileDictating"
+
+    static var pausesMediaWhileDictating: Bool {
+        UserDefaults.standard.object(forKey: pauseMediaWhileDictatingKey) as? Bool ?? true
+    }
     /// Darwin notifications for ducking. Anything local can post them; Mix
     /// posts `ducked` back once every playing app is tapped.
     static let duckNotification = "com.aayanagarwal.mix.duck"

@@ -22,6 +22,9 @@ final class MixerStore: ObservableObject {
     /// Keep system output and input where they are when a device connects.
     /// The engine reads the same UserDefaults key on every refresh.
     @Published private(set) var holdSystemDevices = UserDefaults.standard.bool(forKey: MixIdentity.holdSystemDevicesKey)
+    /// Pause whatever is playing while an app dictates. The engine reads the
+    /// same UserDefaults key on every refresh.
+    @Published private(set) var pauseMediaWhileDictating = MixIdentity.pausesMediaWhileDictating
 
     private let engine = AudioEngine()
     /// Sparkle, started on the first "Check for Updates…" rather than at launch,
@@ -122,6 +125,11 @@ final class MixerStore: ObservableObject {
     func toggleHoldSystemDevices() {
         holdSystemDevices.toggle()
         UserDefaults.standard.set(holdSystemDevices, forKey: MixIdentity.holdSystemDevicesKey)
+    }
+
+    func togglePauseMediaWhileDictating() {
+        pauseMediaWhileDictating.toggle()
+        UserDefaults.standard.set(pauseMediaWhileDictating, forKey: MixIdentity.pauseMediaWhileDictatingKey)
     }
 
     // MARK: - Updates

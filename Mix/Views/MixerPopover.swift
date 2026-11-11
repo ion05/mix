@@ -449,6 +449,10 @@ struct FooterBar: View {
                     get: { store.holdSystemDevices },
                     set: { _ in store.toggleHoldSystemDevices() }
                 ))
+                Toggle("Pause Media While Dictating", isOn: Binding(
+                    get: { store.pauseMediaWhileDictating },
+                    set: { _ in store.togglePauseMediaWhileDictating() }
+                ))
                 Button("Repair Audio Permission") {
                     store.repairPermission()
                 }
