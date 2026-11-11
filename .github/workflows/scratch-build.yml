@@ -1,0 +1,14 @@
+# Temporary: compile check on a macOS runner. Removed before review.
+name: scratch-build
+on: push
+jobs:
+  build:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - run: xcodebuild -version && sw_vers
+      - run: scripts/check.sh
+      - run: xcodebuild -project Mix.xcodeproj -scheme Mix -configuration Release -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY="" build 2>&1 | grep -E "error|warning: .*(DictationPause|AudioEngine|Processes|MixerStore|Models)|BUILD" | head -80; exit ${PIPESTATUS[0]}
+        shell: bash
+      - name: osascript now-playing query runs
+        run: osascript -l JavaScript -e "ObjC.import('Foundation'); var b = \$.NSBundle.bundleWithPath('/System/Library/PrivateFrameworks/MediaRemote.framework/'); b.load; var r = \$.NSClassFromString('MRNowPlayingRequest'); r ? String(r.localIsPlaying) : 'false';"
