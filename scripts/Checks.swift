@@ -37,6 +37,26 @@ struct Checks {
         route.duckHold = false
         precondition(!route.needsAudio)
 
+        // Device mute: a hold-only route needs audio but earns no row, and a
+        // route on a muted device is silent whatever its own volume says.
+        route.muteHold = true
+        precondition(route.needsAudio && route.isMuteHoldOnly)
+        route.setVolume(0.5)
+        precondition(!route.isMuteHoldOnly)
+        route.muteHold = false
+        route.setVolume(1)
+        precondition(!route.needsAudio)
+
+        // routes.json from before per-device mute still loads, routes intact.
+        let legacy = #"{"apps":{"com.spotify.client":{"volume":0.5,"muted":false}},"didRequestAudioPermission":true}"#
+        let decoded = try! JSONDecoder().decode(SavedStore.self, from: Data(legacy.utf8))
+        precondition(decoded.apps["com.spotify.client"]?.volume == 0.5)
+        precondition(decoded.didRequestAudioPermission && decoded.mutedOutputUIDs.isEmpty)
+        var muted = SavedStore.empty
+        muted.mutedOutputUIDs = ["BuiltInSpeakerDevice"]
+        let roundTrip = try! JSONDecoder().decode(SavedStore.self, from: JSONEncoder().encode(muted))
+        precondition(roundTrip == muted)
+
         precondition(MixIdentity.isCallApp("us.zoom.xos"))
         precondition(MixIdentity.isCallApp("com.apple.callservicesd"))
         precondition(!MixIdentity.isCallApp("com.spotify.client"))

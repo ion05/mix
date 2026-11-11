@@ -25,6 +25,9 @@ per app, from a Control Center style panel in the menu bar.
 - **Per-app output.** Route Zoom to your headset and Spotify to your speakers at
   the same time.
 - **Per-app volume and mute**, independent of the system volume.
+- **Per-device mute.** The mute button next to the system volume silences the
+  system output only; apps you sent to other devices keep playing. *Mute Device*
+  in the output menu mutes any other output the same way.
 - **System output and input** in the same panel, so you are not bouncing between
   Mix and System Settings.
 - **Routes are remembered.** Quit Mix, reopen it, and your apps land back on the

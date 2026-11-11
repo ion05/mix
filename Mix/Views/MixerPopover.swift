@@ -92,9 +92,10 @@ struct MixerPopover: View {
                 volume: snapshot.systemVolume,
                 muted: snapshot.systemMuted,
                 devices: snapshot.outputs,
+                mutedUIDs: snapshot.mutedOutputUIDs,
                 onSelect: { store.apply(.setDefaultOutput($0)) },
                 onVolume: { store.apply(.setSystemVolume($0)) },
-                onMute: { store.apply(.setSystemMuted($0)) }
+                onMute: { uid, muted in store.apply(.setOutputMuted(uid: uid, muted: muted)) }
             )
 
             SystemInputLine(
@@ -143,15 +144,28 @@ struct SystemOutputHero: View {
     var volume: Float
     var muted: Bool
     var devices: [DeviceInfo]
+    var mutedUIDs: Set<String>
     var onSelect: (String) -> Void
     var onVolume: (Float) -> Void
-    var onMute: (Bool) -> Void
+    var onMute: (_ uid: String, _ muted: Bool) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: MixSpace.tight) {
             Menu {
                 DestinationList(devices: devices) { uid in
                     if let uid { onSelect(uid) }
+                }
+                Divider()
+                // Any output can be muted on its own, not just the system one,
+                // so the speaker an app is pinned to can go quiet while the
+                // rest keep playing.
+                Menu("Mute Device") {
+                    ForEach(devices) { output in
+                        Toggle(output.name, isOn: Binding(
+                            get: { mutedUIDs.contains(output.uid) },
+                            set: { onMute(output.uid, $0) }
+                        ))
+                    }
                 }
             } label: {
                 HStack(spacing: MixSpace.gutter) {
@@ -177,7 +191,10 @@ struct SystemOutputHero: View {
                 .controlSize(.large)
                 .frame(height: MixMetrics.heroSlider)
                 .animation(.easeOut(duration: 0.1), value: volume)
-                MuteButton(muted: muted) { onMute(!muted) }
+                // Mutes this device only. Apps Mix sends elsewhere keep playing.
+                MuteButton(muted: muted) {
+                    if !device.uid.isEmpty { onMute(device.uid, !muted) }
+                }
             }
         }
         .padding(.horizontal, MixSpace.row)
@@ -312,6 +329,12 @@ struct AppRouteRow: View {
             }
         } label: {
             HStack(spacing: MixSpace.tight) {
+                if app.destinationMuted {
+                    Image(systemName: "speaker.slash.fill")
+                        .font(MixType.chevronSmall)
+                        .foregroundStyle(MixPalette.danger)
+                        .accessibilityLabel("Device muted")
+                }
                 Text(destinationLabel)
                     .font(MixType.label)
                     .lineLimit(1)
