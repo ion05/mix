@@ -8,7 +8,14 @@ jobs:
       - uses: actions/checkout@v4
       - run: xcodebuild -version && sw_vers
       - run: scripts/check.sh
-      - run: xcodebuild -project Mix.xcodeproj -scheme Mix -configuration Release -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY="" build 2>&1 | grep -E "error|warning: .*(DictationPause|AudioEngine|Processes|MixerStore|Models)|BUILD" | head -80; exit ${PIPESTATUS[0]}
+      - name: build
         shell: bash
+        run: |
+          set -o pipefail
+          xcodebuild -project Mix.xcodeproj -scheme Mix -configuration Release -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY="" build > build.log 2>&1 || { grep -E "error" build.log | head -60; exit 1; }
+          grep -E "warning: " build.log | grep -E "DictationPause|AudioEngine|Processes|MixerStore|Models|MixerPopover" | sort -u | head -40 || true
+          tail -3 build.log
       - name: osascript now-playing query runs
-        run: osascript -l JavaScript -e "ObjC.import('Foundation'); var b = \$.NSBundle.bundleWithPath('/System/Library/PrivateFrameworks/MediaRemote.framework/'); b.load; var r = \$.NSClassFromString('MRNowPlayingRequest'); r ? String(r.localIsPlaying) : 'false';"
+        shell: bash
+        run: |
+          osascript -l JavaScript -e "ObjC.import('Foundation'); var b = \$.NSBundle.bundleWithPath('/System/Library/PrivateFrameworks/MediaRemote.framework/'); b.load; var r = \$.NSClassFromString('MRNowPlayingRequest'); r ? String(r.localIsPlaying) : 'false';"
